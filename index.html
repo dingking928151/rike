@@ -8,7 +8,6 @@
   --hair:#E5E1D7; --hair2:#EEEAE0;
   --accent:#2F6D5F; --accent-ink:#F5FBF8; --accent-soft:#E2ECE6; --accent-line:#C2D4CA;
   --danger:#B4432C; --danger-soft:#F6E3DC; --amber:#96690F; --amber-soft:#F3EAD2;
-  --c0:#2a78d6; --c1:#eb6834; --c2:#1baf7a; --c3:#eda100; --c4:#e87ba4;
   --shadow:0 1px 2px rgba(36,41,44,.05),0 10px 28px -14px rgba(36,41,44,.14);
   --r:14px;
 }
@@ -19,7 +18,6 @@
     --hair:#333937; --hair2:#2A302E;
     --accent:#6FBFA6; --accent-ink:#0F1A16; --accent-soft:#24332E; --accent-line:#3B564B;
     --danger:#E07B5E; --danger-soft:#3A2822; --amber:#D9A441; --amber-soft:#332B1A;
-    --c0:#3987e5; --c1:#d95926; --c2:#199e70; --c3:#c98500; --c4:#d55181;
     --shadow:0 1px 2px rgba(0,0,0,.25),0 10px 28px -14px rgba(0,0,0,.5);
   }
 }
@@ -29,7 +27,6 @@
   --hair:#333937; --hair2:#2A302E;
   --accent:#6FBFA6; --accent-ink:#0F1A16; --accent-soft:#24332E; --accent-line:#3B564B;
   --danger:#E07B5E; --danger-soft:#3A2822; --amber:#D9A441; --amber-soft:#332B1A;
-  --c0:#3987e5; --c1:#d95926; --c2:#199e70; --c3:#c98500; --c4:#d55181;
   --shadow:0 1px 2px rgba(0,0,0,.25),0 10px 28px -14px rgba(0,0,0,.5);
 }
 /* ---------- base ---------- */
@@ -281,6 +278,19 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 .num{width:76px;text-align:center;background:var(--card);border:1px solid var(--hair);border-radius:9px;padding:7px 9px;}
 .ta{width:100%;box-sizing:border-box;min-height:110px;background:var(--card2);border:1px solid var(--hair);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.55;}
 .catnameinp{width:110px;background:var(--card);border:1px solid var(--hair);border-radius:9px;padding:7px 10px;}
+/* ---------- 外观 / 科目编辑 ---------- */
+#cat-edit{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.catrow-edit{display:flex;align-items:center;gap:6px;}
+.catcol{width:30px;height:30px;padding:0;border:1px solid var(--hair);border-radius:8px;background:var(--card);cursor:pointer;}
+.catcol::-webkit-color-swatch-wrapper{padding:2px;}
+.catcol::-webkit-color-swatch{border:none;border-radius:5px;}
+.catdel{width:26px;height:26px;}
+.swrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.sw{width:26px;height:26px;border-radius:50%;border:1px solid var(--hair);cursor:pointer;padding:0;}
+.sw.on{box-shadow:0 0 0 2px var(--accent);border-color:transparent;}
+.swcustom{width:28px;height:28px;padding:0;border:1px dashed var(--muted);border-radius:50%;background:var(--card);cursor:pointer;}
+.swcustom::-webkit-color-swatch-wrapper{padding:3px;}
+.swcustom::-webkit-color-swatch{border:none;border-radius:50%;}
 /* ---------- modal ---------- */
 .overlay{position:fixed;inset:0;z-index:60;background:rgba(20,24,23,.45);display:flex;align-items:center;justify-content:center;padding:18px;}
 .modal{
@@ -475,6 +485,17 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
         </div>
       </div>
       <div class="card sect" style="margin-bottom:18px;">
+        <h3>外观</h3>
+        <div class="setrow">
+          <div class="lab"><b>纸色背景</b><span>整页底色；深色模式自动配同色系暗色</span></div>
+          <div class="swrow" id="bg-sw"></div>
+        </div>
+        <div class="setrow">
+          <div class="lab"><b>强调色</b><span>按钮、进度条、进行中标记的颜色</span></div>
+          <div class="swrow" id="acc-sw"></div>
+        </div>
+      </div>
+      <div class="card sect" style="margin-bottom:18px;">
         <h3>学习计划</h3>
         <div class="setrow">
           <div class="lab"><b>计划锚点</b><span>锚点那天是你计划「起始周」的第一天，侧栏据此显示第几周</span></div>
@@ -500,7 +521,7 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
       <div class="card sect" style="margin-bottom:18px;">
         <h3>科目</h3>
         <div class="setrow" id="cat-edit" style="gap:10px;"></div>
-        <p class="help">五个科目对应五个固定颜色，改名不影响已有记录的颜色。</p>
+        <p class="help">科目可增删（1–10 个）、点色块换颜色；删除科目时，它的日程和计时记录会并入最后一个科目。</p>
       </div>
       <div class="card sect">
         <h3>数据备份</h3>
@@ -562,6 +583,7 @@ function fmtDurH(sec){ const h = sec/3600; return h >= 10 ? h.toFixed(0) : h.toF
 
 /* ================= 数据 ================= */
 const DEF_CATS = ["算法CSP","学校课","ML·GNN","英语","其他"];
+const CAT_POOL = ["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#8067c8","#0f9bb5","#6d8f3f","#a8743c","#c9648a"];
 let lsOK = true;
 let db = null;
 
@@ -595,7 +617,7 @@ function seed(){
       S(2,"GCN 预热 · 图表示基础",...hr(dstr(y1),15,30,50),dstr(y1)),
       S(3,"英语精读",...hr(t,8,10,25),t),
     ],
-    settings: {ahead:10,sound:true,notify:false,pw:25,pr:5,cats:[...DEF_CATS],goal:4,anchor:"",w0:1,w1:24,miles:""},
+    settings: {ahead:10,sound:true,notify:false,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""},
     timer: null,
     fired: {}
   };
@@ -606,7 +628,7 @@ function load(){
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.tasks)) return null;
-    d.settings = Object.assign({ahead:10,sound:true,notify:false,pw:25,pr:5,cats:[...DEF_CATS],goal:4,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
+    d.settings = Object.assign({ahead:10,sound:true,notify:false,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
     d.sessions = d.sessions||[]; d.fired = d.fired||{}; d.timer = d.timer||null;
     return d;
   }catch(e){ lsOK = false; return null; }
@@ -621,6 +643,7 @@ function save(){
 }
 db = load() || seed();
 const cats = () => db.settings.cats;
+const colOf = i => db.settings.catCols?.[i] || CAT_POOL[i % CAT_POOL.length];
 
 /* ================= 通用 UI ================= */
 function toast(title, sub, warn){
@@ -758,7 +781,7 @@ function renderToday(){
       return `<div class="trow ${dn?"done":""} ${late?"late":""}" data-id="${x.id}">
         <button class="ck" aria-label="完成" data-act="done">${dn?'<svg class="i" style="width:13px;height:13px;stroke-width:2.4" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9"/></svg>':""}</button>
         <span class="time mono">${time}</span>
-        <span class="stripe" style="background:var(--c${x.cat})"></span>
+        <span class="stripe" style="background:${colOf(x.cat)}"></span>
         <span class="title">${esc(x.title)}</span>
         ${rep}${active?'<span class="chip nowchip">进行中</span>':""}${late?'<span class="chip" style="color:var(--danger)">已过期</span>':""}${pri}
         <span class="acts">
@@ -911,7 +934,7 @@ function renderCal(){
     const ds = dstr(d);
     const out = d.getMonth()!==calM;
     const ts = tasksOf(ds);
-    const dots = ts.slice(0,4).map(x=>`<i style="background:var(--c${x.cat})"></i>`).join("");
+    const dots = ts.slice(0,4).map(x=>`<i style="background:${colOf(x.cat)}"></i>`).join("");
     const more = ts.length>4?`<i style="background:var(--muted)"></i>`:"";
     html += `<button class="cell ${out?"out":""} ${ds===t?"today":""} ${ds===selDate?"sel":""}" data-d="${ds}" aria-label="${ds}">
       <span class="n mono">${d.getDate()}</span>
@@ -941,7 +964,7 @@ function renderDayPanel(){
     ${ts.map(x=>`<div class="trow ${isDone(x,selDate)?"done":""}" data-id="${x.id}">
         <button class="ck" data-act="done" aria-label="完成">${isDone(x,selDate)?'<svg class="i" style="width:13px;height:13px;stroke-width:2.4" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9"/></svg>':""}</button>
         <span class="time mono">${x.start?esc(x.start)+(x.end?" – "+esc(x.end):""):"随时"}</span>
-        <span class="stripe" style="background:var(--c${x.cat})"></span>
+        <span class="stripe" style="background:${colOf(x.cat)}"></span>
         <span class="title">${esc(x.title)}</span>
         ${x.rep?`<span class="chip" style="font-size:10.5px;padding:1px 6px;">${x.rep==="d"?"每天":"每周"}</span>`:""}
         ${x.pri===0?'<span class="pri p0">高</span>':x.pri===1?'<span class="pri p1">中</span>':""}
@@ -1133,7 +1156,7 @@ function renderSessions(){
   $("#sess-list").innerHTML = list.map(x=>{
     const st = new Date(x.startTs), en = new Date(x.endTs||x.startTs+x.sec*1000);
     return `<div class="sessrow" data-id="${x.id}">
-      <span class="dot" style="background:var(--c${x.cat})"></span>
+      <span class="dot" style="background:${colOf(x.cat)}"></span>
       <span class="catname">${esc(cats()[x.cat]||"—")}</span>
       <span class="subj">${esc(x.subj||"—")}</span>
       <span class="span mono">${pad(st.getHours())}:${pad(st.getMinutes())}–${pad(en.getHours())}:${pad(en.getMinutes())}</span>
@@ -1200,8 +1223,8 @@ function renderStats(){
   $("#cat-empty").hidden = perCat.length>0;
   const mx = Math.max(1, ...perCat.map(x=>x.sec));
   $("#catbars").innerHTML = perCat.map(x=>`<div class="catrow">
-      <span class="nm"><span class="dot" style="background:var(--c${x.i})"></span>${esc(x.c||"科目"+(x.i+1))}</span>
-      <span class="track"><i style="width:${x.sec/mx*100}%;background:var(--c${x.i})"></i></span>
+      <span class="nm"><span class="dot" style="background:${colOf(x.i)}"></span>${esc(x.c||"科目"+(x.i+1))}</span>
+      <span class="track"><i style="width:${x.sec/mx*100}%;background:${colOf(x.i)}"></i></span>
       <span class="val mono">${fmtDur(x.sec)}</span></div>`).join("");
 }
 
@@ -1231,6 +1254,43 @@ setInterval(()=>{
   save(); renderToday(); updateNext();
 }, 20000);
 
+/* ================= 外观 ================= */
+const BG_PRESETS = ["", "#F6EEE4", "#EAF2F1", "#F0ECF6", "#F7EDF0"];
+const ACC_PRESETS = ["", "#3A5BA5", "#A55038", "#6C4E9E", "#8A6D3B"];
+function hexToHsl(hex){
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex||"")); if (!m) return null;
+  const n = parseInt(m[1],16), r=(n>>16&255)/255, g=(n>>8&255)/255, b=(n&255)/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b); let h=0,s=0,l=(mx+mn)/2;
+  if (mx!==mn){ const d=mx-mn; s=l>.5?d/(2-mx-mn):d/(mx+mn);
+    h=(mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4)*60; }
+  return [h,s,l];
+}
+const hsl=(h,s,l)=>`hsl(${Math.round(h)},${Math.round(s*100)}%,${Math.round(l*100)}%)`;
+function renderSw(sel, cur, presets, def, onPick){
+  const box = $(sel);
+  box.innerHTML = presets.map(v=>`<button class="sw ${cur===v?"on":""}" data-v="${v}" style="background:${v||def}" aria-label="${v||"默认"}"></button>`).join("")
+    + `<input type="color" class="swcustom" value="${/^#[0-9a-f]{6}$/i.test(cur||"")?cur:def}" title="自定义颜色">`;
+  box.querySelectorAll(".sw").forEach(b=>b.onclick = ()=>{ onPick(b.dataset.v || ""); renderSettings(); });
+  box.querySelector(".swcustom").oninput = e=> onPick(e.target.value);
+}
+function applyTheme(){
+  let css = "";
+  if (db.settings.bg){
+    const c = hexToHsl(db.settings.bg) || [40,.12];
+    const dk = hsl(c[0], Math.min(c[1],.14), .085);
+    css += `:root{--bg:${db.settings.bg}}@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:${dk}}} :root[data-theme="dark"]{--bg:${dk}}`;
+  }
+  if (db.settings.acc){
+    const [h,s] = hexToHsl(db.settings.acc) || [165,.4];
+    css += `:root{--accent:${db.settings.acc};--accent-ink:${hsl(h,Math.max(s*.5,.3),.97)};--accent-soft:${hsl(h,Math.min(s,.35),.91)};--accent-line:${hsl(h,Math.min(s,.4),.76)}}`
+      + `@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--accent:${hsl(h,Math.min(s,.42),.64)};--accent-ink:${hsl(h,.35,.09)};--accent-soft:${hsl(h,Math.min(s,.3),.14)};--accent-line:${hsl(h,Math.min(s,.35),.3)}}}`
+      + `:root[data-theme="dark"]{--accent:${hsl(h,Math.min(s,.42),.64)};--accent-ink:${hsl(h,.35,.09)};--accent-soft:${hsl(h,Math.min(s,.3),.14)};--accent-line:${hsl(h,Math.min(s,.35),.3)}}`;
+  }
+  let st = $("#themecss");
+  if (!st){ st = document.createElement("style"); st.id = "themecss"; document.head.appendChild(st); }
+  st.textContent = css;
+}
+
 /* ================= 设置 ================= */
 function renderSettings(){
   $("#s-ahead").value = String(db.settings.ahead);
@@ -1245,9 +1305,13 @@ function renderSettings(){
   $("#s-w1").value = db.settings.w1;
   $("#s-goal").value = db.settings.goal;
   $("#s-miles").value = db.settings.miles || "";
+  renderSw("#bg-sw", db.settings.bg, BG_PRESETS, "#F4F2EC", v=>{ db.settings.bg = v; save(); applyTheme(); });
+  renderSw("#acc-sw", db.settings.acc, ACC_PRESETS, "#2F6D5F", v=>{ db.settings.acc = v; save(); applyTheme(); });
   $("#cat-edit").innerHTML = cats().map((c,i)=>
-    `<span style="display:flex;align-items:center;gap:8px;"><span class="dot" style="background:var(--c${i})"></span>
-     <input class="catnameinp" data-ci="${i}" value="${esc(c)}" maxlength="6" aria-label="科目${i+1}"></span>`).join("");
+    `<span class="catrow-edit"><input type="color" class="catcol" data-cc="${i}" value="${colOf(i)}" aria-label="科目${i+1}颜色">
+     <input class="catnameinp" data-ci="${i}" value="${esc(c)}" maxlength="8" aria-label="科目${i+1}">
+     <button class="iconbtn catdel" data-cd="${i}" aria-label="删除科目${i+1}"><svg class="i" style="width:15px;height:15px" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button></span>`).join("")
+    + `<button class="btn sm" id="cat-add">＋ 添加科目</button>`;
   $("#s-export").value = JSON.stringify(db);
 }
 $("#s-ahead").onchange = e=>{ db.settings.ahead = +e.target.value; save(); };
@@ -1274,7 +1338,37 @@ $("#s-goal").onchange = e=>{ db.settings.goal = Math.max(1,Math.min(14,+e.target
 $("#s-miles").onchange = e=>{ db.settings.miles = e.target.value; save(); updatePlanInfo(); };
 $("#cat-edit").addEventListener("change", e=>{
   const i = e.target.dataset.ci;
-  if (i!=null){ db.settings.cats[+i] = e.target.value.trim() || DEF_CATS[+i]; save(); renderToday(); renderCal(); renderSessions(); }
+  if (i!=null){ db.settings.cats[+i] = e.target.value.trim() || ("科目"+(+i+1)); save(); renderAll(); }
+});
+$("#cat-edit").addEventListener("input", e=>{
+  const cc = e.target.dataset.cc;
+  if (cc!=null){
+    db.settings.catCols = db.settings.catCols || new Array(cats().length).fill(null);
+    db.settings.catCols[+cc] = e.target.value;
+    save(); renderToday(); renderCal(); renderSessions(); renderStats();
+  }
+});
+$("#cat-edit").addEventListener("click", e=>{
+  const del = e.target.closest(".catdel");
+  if (del){
+    const d = +del.dataset.cd;
+    if (cats().length <= 1){ toast("至少保留一个科目", undefined, true); return; }
+    db.settings.cats.splice(d,1);
+    if (db.settings.catCols) db.settings.catCols.splice(d,1);
+    const last = cats().length - 1;
+    const remap = c => c===d ? last : (c>d ? c-1 : c);
+    db.tasks.forEach(t=>t.cat=remap(t.cat));
+    db.sessions.forEach(s=>s.cat=remap(s.cat));
+    save(); renderAll();
+    toast("已删除科目", "相关记录已并入「"+cats()[last]+"」");
+    return;
+  }
+  if (e.target.closest("#cat-add")){
+    if (cats().length >= 10){ toast("科目最多 10 个", undefined, true); return; }
+    db.settings.cats.push("新科目");
+    if (db.settings.catCols) db.settings.catCols.push(CAT_POOL[cats().length % CAT_POOL.length]);
+    save(); renderSettings();
+  }
 });
 $("#s-copy").onclick = ()=>copyTA($("#s-export"));
 $("#s-refresh").onclick = ()=>{ $("#s-export").value = JSON.stringify(db); toast("已刷新"); };
@@ -1283,7 +1377,7 @@ $("#s-import-btn").onclick = ()=>{
     const d = JSON.parse($("#s-import").value);
     if (!d || !Array.isArray(d.tasks) || !Array.isArray(d.sessions)) throw 0;
     db = d;
-    db.settings = Object.assign({ahead:10,sound:true,notify:false,pw:25,pr:5,cats:[...DEF_CATS],goal:4,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
+    db.settings = Object.assign({ahead:10,sound:true,notify:false,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
     db.fired = db.fired||{}; db.timer = db.timer||null;
     save(); renderAll();
     toast("导入成功", `${db.tasks.length} 条日程 · ${db.sessions.length} 条记录`);
@@ -1308,6 +1402,7 @@ function tickClock(){
   if (ds !== lastDay){ lastDay = ds; updatePlanInfo(); renderToday(); }
 }
 function renderAll(){
+  applyTheme();
   renderToday(); renderCal(); renderSessions(); renderStats(); renderSettings(); updateNext(); updatePlanInfo(); setTimerButtons(); renderReadout();
 }
 fillTimerSelects();
