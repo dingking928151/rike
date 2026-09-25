@@ -297,10 +297,13 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 /* ---------- 小窝 ---------- */
 .petgrid{display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:start;}
 @media (max-width:880px){.petgrid{grid-template-columns:1fr;}}
-.petstage{position:relative;display:flex;justify-content:center;align-items:flex-end;padding:22px 0 10px;min-height:210px;}
-#pet-big{width:168px;height:168px;image-rendering:pixelated;}
-#pet-big.juvenile{width:124px;height:124px;}
-#pet-big.egg{width:140px;height:140px;}
+.petstage{position:relative;display:flex;justify-content:center;align-items:flex-end;padding:26px 0 10px;min-height:238px;}
+.petbubble{position:absolute;top:0;left:50%;transform:translateX(-50%);max-width:78vw;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:6px 13px;font-size:13px;color:var(--ink);box-shadow:var(--shadow);white-space:normal;text-align:center;animation:petpop .25s ease;z-index:2;}
+.petbubble::after{content:"";position:absolute;bottom:-5px;left:50%;width:8px;height:8px;background:var(--card);border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);transform:translateX(-50%) rotate(45deg);}
+@keyframes petpop{from{opacity:0;transform:translateX(-50%) scale(.85)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+#pet-big{width:192px;height:192px;image-rendering:pixelated;}
+#pet-big.juvenile{width:144px;height:144px;}
+#pet-big.egg{width:156px;height:156px;}
 #pet-big.jump{animation:petjump .5s ease;}
 @keyframes petjump{0%,100%{transform:translateY(0)}40%{transform:translateY(-18px)}}
 #pet-big.wobble{animation:petwobble .8s ease infinite;}
@@ -324,7 +327,7 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 .petmini:hover{background:var(--card2);}
 .petmini canvas{width:26px;height:26px;image-rendering:pixelated;flex:none;}
 .petmini b{color:var(--ink);font-weight:500;}
-.pxed{display:grid;grid-template-columns:repeat(16,1fr);gap:0;width:min(288px,72vw);margin:0 auto;border:1px solid var(--hair);border-radius:8px;overflow:hidden;touch-action:none;}
+.pxed{display:grid;grid-template-columns:repeat(24,1fr);gap:0;width:min(336px,80vw);margin:0 auto;border:1px solid var(--hair);border-radius:8px;overflow:hidden;touch-action:none;}
 .pxed button{aspect-ratio:1;border:0;padding:0;min-width:0;min-height:0;}
 .pxpal{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0 4px;}
 .pxpal button{width:26px;height:26px;border-radius:8px;border:2px solid transparent;padding:0;}
@@ -363,7 +366,7 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
     <div class="nextup" id="nextup"></div>
     <div class="planinfo" id="planinfo"></div>
     <div class="petmini" id="petmini" title="去小窝看看">
-      <canvas id="pet-mini" width="64" height="64"></canvas>
+      <canvas id="pet-mini" width="96" height="96"></canvas>
       <span id="petmini-txt"></span>
     </div>
     <div class="clockbox">
@@ -501,8 +504,9 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
       <div class="petgrid">
         <div class="card sect">
           <div class="petstage">
+            <div class="petbubble" id="pet-bubble" hidden></div>
             <button class="petwrap" id="pet-wrap" aria-label="摸摸宠物">
-              <canvas id="pet-big" class="mono" width="256" height="256"></canvas>
+              <canvas id="pet-big" class="mono" width="288" height="288"></canvas>
               <span id="pet-deco"></span>
             </button>
           </div>
@@ -752,131 +756,187 @@ const colOf = i => db.settings.catCols?.[i] || CAT_POOL[i % CAT_POOL.length];
 const PET_ART = [
 {name:"橘猫", pal:{B:"#E8A860",D:"#A06830",W:"#FBF6EC",E:"#2E2A26",P:"#E89898",A:"#E8A860"},
  art:[
-"................",
-"..D..........D..",
-"..DD........DD..",
-"..DBD..DD..DBD..",
-"..DBDDDDDDDBDD..",
-".DBBBBBBBBBBBBD.",
-".DBBDDBBBBDBBBD.",
-".DBWEBBBBBWEBBD.",
-".DBWEBBBBBWEBBD.",
-".DBBBBPPPBBBBBD.",
-".DBDBBPPPPBDBBD.",
-".DBBBBWWWWBBBBD.",
-".DBBBWWWWWWBBBD.",
-"..DBBWWWWWWBBD..",
-"..DD.DDDDDD.DD..",
-"................"]},
+"........................",
+"..DD..............DD....",
+".DBBD............DBBD...",
+".DBPD............DPBD...",
+".DBBDDDDDDDDDDDDDBBD....",
+".DBBBBBBBBBBBBBBBBBD....",
+".DBBDDDBBBBBBDDDDBBD....",
+".DBBBBBBBBBBBBBBBBBD....",
+".DBWEBBBBBBBBBBBWEBBD...",
+".DBWEBBBBBBBBBBBWEBBD...",
+".DBBBBBBBBBBBBBBBBBD....",
+".DBBPPBBBBBBBBBBPPBBD...",
+".DBBBBBBBBPPBBBBBBBD....",
+".DBBBBBBBBDDBBBBBBBD....",
+"..DBBBBBBBBBBBBBBBD.....",
+"...DDDDDDDDDDDDDDDD.....",
+"...DBBBWWWWWWWWBBBD.....",
+"..DBBBBWWWWWWWWBBBBD....",
+".DBBBBBWWWWWWWWBBBBBD...",
+".DBBDDBWWWWWWWWBDBBBD...",
+".DBBDBBWWWWWWWWBDBBBD...",
+".DBBD.DWWWWWWWW..DBBD...",
+".DBBD..DDDDDDDD..DBBD...",
+"..DD..DD......DD..DD...."]},
 {name:"柴犬", pal:{B:"#E0A060",D:"#8A5A28",W:"#FDF8F0",E:"#2E2A26",P:"#D88888",A:"#FDF8F0"},
  art:[
-"................",
-"...DD......DD...",
-"..DBBD....DBBD..",
-"..DBBD....DBBD..",
-"..DBBBDDDDBBBD..",
-"..DBBBBBBBBBBD..",
-".DBBBWBBBBWBBBD.",
-".DBBBWBBBBWBBBD.",
-".DBWEBBBBBWEBBD.",
-".DBBBBBDDBBBBBD.",
-".DBBBBDWDBBBBBD.",
-".DBBBBWWWWBBBBD.",
-".DBBBBWWWWBBBBD.",
-"..DBBWWWWWWBBD..",
-"...DBWWWWWWBD...",
-"....DDDDDDDD...."]},
+"........................",
+"...DD..........DD.......",
+"..DBBD........DBBD......",
+"..DBBD........DBBD......",
+"..DBBDDDDDDDDDBBBD......",
+"..DBBBBBBBBBBBBBD.......",
+".DBBBBBBBBBBBBBBBD......",
+".DBBWBBBBBBBBBWBB.......",
+".DBBWWBBBBBBBWWBBD......",
+".DBWWWWBBBBBBWWWBD......",
+".DBBWWBBBBBBBWWBBD......",
+".DBBBBBBBPPBBBBBBD......",
+".DBBBBBBBDDBBBBBBD......",
+".DBBBBBBWDDWBBBBBD......",
+".DBBBBWWWWWWWWBBBD......",
+"..DBBWWWWWWWWWWBBD......",
+"..DBBWWWWWWWWWWBBD......",
+".DBBBWWWWWWWWWWBBBD.....",
+".DBBBBWWWWWWWWBBBBD.....",
+".DBBBBBWWWWWWBBBBBD.....",
+".DBBDDBWWWWWWBDBBBD.....",
+".DBBDBBWWWWWWBDBBBD.....",
+".DBBD..DDDDDD..DBBD.....",
+"..DD..DD....DD..DD......"]},
 {name:"兔子", pal:{B:"#F5F0E8",D:"#B09880",W:"#FFFFFF",E:"#2E2A26",P:"#E89AA8",A:"#F5F0E8"},
  art:[
-"................",
-"...DD......DD...",
-"..DBBD....DBBD..",
-"..DBPD....DBPD..",
-"..DBPD....DBPD..",
-"..DBBDDDDDDDBBD.",
-"..DBBBBBBBBBBBD.",
-".DBBBBBBBBBBBBD.",
-".DBWEBBBBBWEBBD.",
-".DBWEBBBBBWEBBD.",
-".DBBBBBPPBBBBBD.",
-".DBBBBPPPPBBBBD.",
-".DBBBWWWWWWBBBD.",
-".DBBBWWWWWWBBBD.",
-"..DBBWWWWWWBBD..",
-"...DDBBBBBBBD..."]},
+"........................",
+"...DDD........DDD.......",
+"..DBBBD......DBBBD......",
+"..DBPBD......DBPBD......",
+"..DBPBD......DBPBD......",
+"..DBBBD......DBBBD......",
+"..DBBBDDDDDDDBBBD.......",
+"..DBBBBBBBBBBBBBD.......",
+".DBBBBBBBBBBBBBBBD......",
+".DBWEBBBBBBBBBBWEBBD....",
+".DBWEBBBBBBBBBBWEBBD....",
+".DBBBBBBPPPPBBBBBBD.....",
+".DBBBBBBBBBBBBBBBD......",
+".DBBPPBBBBBBBBBBPPBD....",
+".DBBBBBBWWWWBBBBBBD.....",
+"..DBBBBBWWWWBBBBBD......",
+"..DBBBWWWWWWWWBBBD......",
+".DBBBWWWWWWWWWWBBBD.....",
+".DBBBWWWWWWWWWWBBBD.....",
+".DBBBBBWWWWWWBBBBBD.....",
+".DBBDDBWWWWWWBDBBBD.....",
+".DBBDBBWWWWWWBDBBBD.....",
+".DBBD..DDDDDD..DBBD.....",
+"..DD..DD....DD..DD......"]},
 {name:"小鸡", pal:{B:"#F0C84A",D:"#B8902A",W:"#FDFCF8",E:"#2E2A26",P:"#F0A060",A:"#E8823A"},
  art:[
-"................",
-"......DD........",
-".....DDBD.......",
-"....DDDDDD......",
-"....DBBBBBD.....",
-"...DBBBBBBBD....",
-"...DBWBBWBD.....",
-"...DBWBBWBD.....",
-"...DBBAABBBD....",
-"...DBWAABBWD....",
-"...DBBPPPBBBD...",
-"...DBBBBBBBBD...",
-"....DBWWWBD.....",
-".....DBBBD......",
-".....DA.AD......",
-"....DA...AD....."]},
+"........................",
+".........DD.............",
+"........DDBD............",
+".......DDDDDD...........",
+"......DDBBBBDD..........",
+".....DBBBBBBBBD.........",
+"....DBBBBBBBBBBD........",
+"....DBEBBBBBBEBD........",
+"....DBEBBBBBBEBD........",
+"....DBBBBBBBBBD.........",
+"....DBBBWAABBBBD........",
+"....DBBBWAABBBBD........",
+"....DBBBBPPBBBBD........",
+"....DBBBBBBBBBD.........",
+"....DDBWWWWWBDD.........",
+"....DBBWWWWWBBD.........",
+"...DBBBWWWWWBBBD........",
+"..DBBBBWWWWWBBBBD.......",
+"..DBBBBBWWWBBBBBD.......",
+"..DBBBBBBBBBBBBBD.......",
+"...DBBDDBBBBDBBD........",
+"....DD.DDDDDD.DD........",
+".....DA......AD.........",
+"....DA........AD........"]},
 {name:"青蛙", pal:{B:"#7BAE5A",D:"#4A7A32",W:"#FDFCF8",E:"#2E2A26",P:"#E8A0A0",A:"#DCE8BC"},
  art:[
-"................",
-"..DDD......DDD..",
-".DBBBD....DBBBD.",
-".DBWBD....DBWBD.",
-".DBWBD....DBWBD.",
-".DBBBDDDDDDDBBD.",
-".DBBBBBBBBBBBBD.",
-"DBBBBBBBBBBBBBBD",
-"DBBPBBBBBBBBPBBD",
-"DBBBPDDDDDDPBBBD",
-"DBBBBDDBBDBBBBBD",
-"DBAAABBBBBBAAABD",
-".DAAAAAAAAAAAAD.",
-"..DB.DA..AD.BD..",
-"...DD.DD.DD.DD..",
-"................"]},
+"........................",
+"........................",
+"...DDD..........DDD.....",
+"..DBBBD........DBBBD....",
+".DBBWBD........DBWBD....",
+".DBBWBD........DBWBD....",
+".DBBBBDDDDDDDDDBBBD.....",
+".DBBBBBBBBBBBBBBBBD.....",
+"DBBBBBBBBBBBBBBBBBBD....",
+"DBBBBBBBBBBBBBBBBBBD....",
+"DBBPBBBBBBBBBBBBPPBBD...",
+"DBBBBDDBBBBBBBDBBBBBD...",
+"DBBBBDDBBBBBBBDBBBBBD...",
+"DBAAABBBBBBBBBBBAAABD...",
+"DBAAABBBBBBBBBBBAAABD...",
+".DBBBBBBBBBBBBBBBBD.....",
+".DBAAAWWWWWWWWAAABD.....",
+".DBAAWWWWWWWWWWABD......",
+"..DBBWWWWWWWWWWBD.......",
+"..DBBWWWWWWWWWWBD.......",
+"...DBBWWWWWWWWBD........",
+"...DBBDBBBBBBBDBD.......",
+"...DBD.DBDDD.DBD........",
+"....D..DD..DD..D........"]},
 {name:"熊猫", pal:{B:"#F5F2EA",D:"#2E2A26",W:"#F5F2EA",E:"#2E2A26",P:"#C8B8B8",A:"#2E2A26"},
  art:[
-"................",
-"..DDD......DDD..",
-".DDDDD....DDDDD.",
-".DDDDD....DDDDD.",
-"..DDDDDDDDDDDD..",
-"..DDBBBBBBBBDD..",
-".DBBBBBBBBBBBBD.",
-".DBDDWBBBBWDDBD.",
-".DBDDWBBBBWDDBD.",
-".DBBBBBPPBBBBBD.",
-".DBBBBBDDBBBBBD.",
-".DBBBBWWWWBBBBD.",
-".DBBBWWWWWWBBBD.",
-"..DBBWWWWWWBBD..",
-"..DD.DDDDDD.DD..",
-"................"]},
+"........................",
+"...DDDD........DDDD.....",
+"..DDDDDD......DDDDDD....",
+"..DDDDD........DDDDD....",
+"...DDDDDDDDDDDDDDD......",
+"..DDBBBBBBBBBBBBDD......",
+".DBBBBBBBBBBBBBBBBD.....",
+".DBDDDBBBBBBBBDDDBBD....",
+".DBDDDDBBBBBBDDDDBBD....",
+".DBBDWEBBBBBBBEWEBBD....",
+".DBBDWEBBBBBBBEWEBBD....",
+".DBBBBBBBPPBBBBBBBD.....",
+".DBBBBBBBDDBBBBBBBD.....",
+".DBBBBBBWDDWBBBBBBD.....",
+".DBBBBBWWWWWWBBBBBD.....",
+"..DBBBBWWWWWWBBBBD......",
+"..DDBBWWWWWWWWBBDD......",
+".DBDDDBWWWWWWWBDDDBD....",
+".DBDDDBWWWWWWWBDDDBD....",
+".DBBBBWWWWWWWWWBBBBD....",
+".DBBBBWWWWWWWWWBBBBD....",
+".DBBDDBWWWWWWWBDBBBD....",
+".DBBDBBWWWWWWWBDBBBD....",
+".DBBD..DDDDDDD..DBBD...."]},
 ];
-const PET_EGG = {pal:{B:"#EFE8D8",D:"#A08858",W:"#FDFCF8",E:"#2E2A26",P:"#E89898",A:"#EFE8D8"},
+const PET_EGG = {pal:{B:"#EFE8D8",D:"#A08858",W:"#FDFCF8",E:"#2E2A26",P:"#E89898",A:"#D9C79F"},
  art:[
-"................",
-"................",
-"......DDDD......",
-".....DBBBBD.....",
-"....DBBWBBBD....",
-"....DBWBBBBD....",
-"...DBBWBBBBBD...",
-"...DBBWBBBBBD...",
-"...DBBBBBBBBD...",
-"...DBBWBBBBBD...",
-"....DBBBBBD.....",
-"....DBBWBBBD....",
-".....DBBBBD.....",
-"......DDDD......",
-"................",
-"................"]};
+"........................",
+"........................",
+"........................",
+"........DDDDDD..........",
+".......DBBBBBBD.........",
+"......DBBBWWBBBD........",
+".....DBBBBWWBBBBD.......",
+".....DBBBBBBBBBBD.......",
+"....DBBBWWBBBBBBD.......",
+"....DBBBWWBBBBBBD.......",
+"....DBBBBBBBBBBBD.......",
+"....DBBBBWWBBBBBD.......",
+"....DBBBBWWBBBBBD.......",
+"....DBBBBBBBBBBBD.......",
+".....DBBBBBBBBBD........",
+".....DBBWWBBBBD.........",
+"......DBBBBBBBD.........",
+".......DDBBBD...........",
+".....DAAAAAAAAAD........",
+"....DAAWAAAWAAAWAD......",
+"...DAWAAAWAAAWAAAWAD....",
+"..DAAAWAAAWAAAWAAAWAD...",
+".DAAAAAAAAAAAAAAAAAAAD..",
+"..DD..DD..DD..DD..DD...."]};
 const blinkOf = art => art.map(r=>r.replace(/E/g,"B"));
 function petDefault(){ return {species:0,custom:null,tint:null,name:"团子",food:2,hunger:70,mood:70,lastOpen:todayStr(),bornAt:Date.now(),strokes:{}}; }
 function fixPet(p){
@@ -888,7 +948,12 @@ function fixPet(p){
   p.hunger = Math.max(0, Math.min(100, p.hunger));
   p.mood = Math.max(0, Math.min(100, p.mood));
   p.food = Math.max(0, Math.min(10, p.food|0));
-  if (!Array.isArray(p.custom) || p.custom.length !== 16) p.custom = null;
+  if (Array.isArray(p.custom) && p.custom.length === 16 && p.custom.every(r=>typeof r==="string" && r.length===16)){
+    /* 旧版 16×16 形象 → 居中放进 24×24，不丢像素 */
+    const E = ".".repeat(24), pad = r => "...."+r+"....";
+    p.custom = [E,E,E,E].concat(p.custom.map(pad), [E,E,E,E]);
+  }
+  if (!Array.isArray(p.custom) || p.custom.length !== 24 || !p.custom.every(r=>typeof r==="string" && r.length===24 && /^[.BDWEPA]*$/.test(r))) p.custom = null;
   if (typeof p.tint !== "string" || !/^#[0-9a-fA-F]{6}$/.test(p.tint)) p.tint = null;
   return p;
 }
@@ -924,7 +989,7 @@ function petState(){
 }
 function drawPet(cv, opt){
   const {art, pal} = petSource();
-  const blink = opt.blink, scale = cv.width/16;
+  const blink = opt.blink, scale = cv.width/24;
   const g = cv.getContext("2d");
   g.clearRect(0,0,cv.width,cv.height);
   g.fillStyle = "#3a3128";
@@ -978,6 +1043,26 @@ function petFx(txt, n){
     setTimeout(()=>s.remove(), 1800 + i*180);
   }
 }
+/* 台词气泡 */
+const PET_LINES = {
+  ok:["今天也要一起加油呀！","学累了就来摸摸我~","我刚睡醒，精神满满！","陪你写到收官那一天！","嘿嘿，摸起来舒服吧？"],
+  hungry:["咕噜噜……饭盒是空的吗？","好想吃一颗粮啊……","闻到粮的味道了吗？","肚子在唱歌了……"],
+  sad:["陪陪我嘛……","最近好忙呀，我一直在等你","点我一下，我就开心了","别忘了我哦"],
+  sleep:["Zzz……呼……Zzz……","（它睡得香香的）","（梦里也在等你）"],
+  egg:["（蛋壳里传来轻轻的动静）","（快了快了，马上孵出来！）","（蛋：多学一会儿，我就能出来啦）"],
+  feed:["谢谢投喂！","嗷呜，好吃！","满血复活！","你就是最好的投喂官！"],
+  stroke:["嘿嘿~","再摸一下嘛！","最喜欢你啦！","（蹭了蹭你的手）","（开心地眯起了眼）"],
+};
+let petSayTimer = 0;
+function petSay(pool){
+  const lines = PET_LINES[pool], b = $("#pet-bubble");
+  if (!lines || !b) return;
+  b.textContent = lines[Math.floor(Math.random()*lines.length)];
+  b.hidden = false;
+  b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
+  clearTimeout(petSayTimer);
+  petSayTimer = setTimeout(()=>{ b.hidden = true; }, 3200);
+}
 function petEarn(sec){
   if (!db.pet || sec < 60) return;
   const n = Math.min(10 - db.pet.food, Math.floor(sec/1500));
@@ -1013,7 +1098,7 @@ function renderPet(){
   if (!box.dataset.built){
     box.dataset.built = "1";
     PET_ART.forEach((p,i)=>{
-      const c = document.createElement("canvas"); c.width = 64; c.height = 64;
+      const c = document.createElement("canvas"); c.width = 96; c.height = 96;
       const g = c.getContext("2d");
       p.art.forEach((row,y)=>[...row].forEach((ch,x)=>{
         if (ch!=="."){ g.fillStyle = p.pal[ch]; g.fillRect(x*4,y*4,4,4); }
@@ -1043,14 +1128,15 @@ function renderPetOpts(){
 /* 互动 */
 $("#pet-wrap").addEventListener("click", ()=>{
   const s = petState();
-  if (s === "egg"){ petFx("💭"); return; }
-  if (s === "sleep"){ petFx("💤"); toast("它睡得很沉","喂一颗存粮叫醒它"); return; }
+  if (s === "egg"){ petFx("💭"); petSay("egg"); return; }
+  if (s === "sleep"){ petFx("💤"); petSay("sleep"); return; }
   const t = todayStr();
   const n = db.pet.strokes[t] || 0;
   db.pet.strokes[t] = n + 1;
   if (n < 3){ db.pet.mood = Math.min(100, db.pet.mood + 2); }
   petAnim.jumpUntil = Date.now() + 500;
   petFx(n < 3 ? "❤" : "♪");
+  petSay(Math.random() < .6 ? "stroke" : s);
   save(); renderPet();
 });
 $("#pet-feed").onclick = ()=>{
@@ -1060,6 +1146,7 @@ $("#pet-feed").onclick = ()=>{
   db.pet.hunger = Math.min(100, db.pet.hunger + 14);
   db.pet.mood = Math.min(100, db.pet.mood + 4);
   petFx("🍚", 2);
+  petSay("feed");
   if (petState() !== "sleep") petAnim.jumpUntil = Date.now() + 500;
   save(); renderPet();
   if (db.pet.hunger >= 100) toast("吃饱啦","它满足地眯起了眼");
@@ -1086,14 +1173,14 @@ function openPetEditor(){
   let ch = "B";
   const pal = petPal();
   const colors = {B:pal.B, D:pal.D, W:pal.W, E:pal.E, P:pal.P, A:pal.A};
-  openModal(`<h3>像素编辑器 · 16×16</h3>
+  openModal(`<h3>像素编辑器 · 24×24</h3>
     <div class="pxed" id="pxed"></div>
     <div class="pxpal" id="pxpal"></div>
     <p class="help" style="text-align:center;">点色板选颜色，按住拖动涂色；「橡皮」擦掉像素。</p>
     <div class="btnrow"><button class="btn sm" id="px-clear">清空</button><span style="flex:1;"></span><button class="btn sm" id="px-cancel">取消</button><button class="btn sm pri" id="px-save">保存形象</button></div>`);
   const grid = $("#pxed");
   const cells = [];
-  for (let y=0;y<16;y++) for (let x=0;x<16;x++){
+  for (let y=0;y<24;y++) for (let x=0;x<24;x++){
     const b = document.createElement("button");
     b.dataset.x = x; b.dataset.y = y;
     grid.appendChild(b); cells.push(b);
@@ -1134,7 +1221,7 @@ function openPetEditor(){
   });
   palBox.querySelector("button").classList.add("on");
   $("#px-cancel").onclick = closeModal;
-  $("#px-clear").onclick = ()=>{ for (let y=0;y<16;y++) for (let x=0;x<16;x++) rows[y][x]="."; sync(); };
+  $("#px-clear").onclick = ()=>{ for (let y=0;y<24;y++) for (let x=0;x<24;x++) rows[y][x]="."; sync(); };
   $("#px-save").onclick = ()=>{
     if (!rows.some(r=>r.some(c=>c!=="."))){ toast("画布是空的","至少画一个像素再保存",true); return; }
     db.pet.custom = rows.map(r=>r.join(""));
@@ -1159,7 +1246,7 @@ $("#pet-import").onclick = ()=>{
   $("#petimp-ok").onclick = ()=>{
     try{
       const d = JSON.parse($("#petimp").value);
-      if (!d || !Array.isArray(d.rows) || d.rows.length !== 16 || !d.rows.every(r=>typeof r==="string" && r.length===16 && /^[.BDWEPA]*$/.test(r))) throw 0;
+      if (!d || !Array.isArray(d.rows) || d.rows.length !== 24 || !d.rows.every(r=>typeof r==="string" && r.length===24 && /^[.BDWEPA]*$/.test(r))) throw 0;
       db.pet.custom = d.rows;
       if (d.tint && /^#[0-9a-fA-F]{6}$/.test(d.tint)) db.pet.tint = d.tint;
       save(); closeModal(); renderPet();
@@ -1168,10 +1255,14 @@ $("#pet-import").onclick = ()=>{
   };
 };
 $("#petmini").onclick = ()=>showView("pet");
-/* 宠物动画心跳: 600ms 一帧, 页面隐藏时只累计不绘制 */
+/* 宠物动画心跳: 600ms 一帧, 页面隐藏时只累计不绘制; 约 30s 无人互动可能自言自语一句 */
+let petIdle = 0;
 setInterval(()=>{
   petAnim.n++;
   if (Math.random() < .12) petAnim.blinkUntil = Date.now() + 320;
+  if (view === "pet" && !document.hidden && petStage() !== 0){
+    if (++petIdle >= 50){ petIdle = 0; if (Math.random() < .45) petSay(petState()); }
+  }
   if (document.hidden) return;
   if (view === "pet") petRender(false);
   petRender(true);
@@ -1241,7 +1332,7 @@ function showView(v){
   if (v === "cal") renderCal();
   if (v === "stats") renderStats();
   if (v === "timer") renderSessions();
-  if (v === "pet") renderPet();
+  if (v === "pet"){ renderPet(); if (Math.random() < .5) petSay(petState()); }
 }
 $("#nav").addEventListener("click", e=>{ const b = e.target.closest(".navbtn"); if (b) showView(b.dataset.v); });
 $("#tabbar").addEventListener("click", e=>{ const b = e.target.closest("button"); if (b) showView(b.dataset.v); });
