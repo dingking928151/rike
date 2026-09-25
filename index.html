@@ -37,6 +37,7 @@ body{
   margin:0;background:var(--bg);color:var(--ink);
   font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
   font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  font-optical-sizing:auto;
 }
 .serif{font-family:"Noto Serif SC","Songti SC","SimSun",serif;}
 .mono{font-family:"IBM Plex Mono",Consolas,"Courier New",monospace;font-variant-numeric:tabular-nums;}
@@ -46,7 +47,32 @@ input,select,textarea{font:inherit;color:var(--ink);}
 [hidden]{display:none!important;}
 ::placeholder{color:var(--muted);opacity:1;}
 svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;}
-@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;}}
+/* 即时按压反馈: 按下那一帧就回缩, 不等松手 */
+.btn,.iconbtn,.navbtn,.tabbar button,.modetabs button,.wcell,.petopt,.pxpal button,.sw,.cell,.switch,.trow .ck{
+  transition:transform .1s ease-out,background-color .15s,border-color .15s,color .15s;
+}
+.btn:active,.iconbtn:active,.navbtn:active,.tabbar button:active,.modetabs button:active,.wcell:active,.petopt:active,.pxpal button:active,.sw:active,.switch:active{transform:scale(.96);}
+.cell:active{transform:scale(.97);}
+.trow .ck:active{transform:scale(.84);}
+/* 减少动效: 保留透明度淡入等辅助理解的提示, 去掉位移/弹跳/宠物大动画 */
+@media (prefers-reduced-motion: reduce){
+  .v-anim{animation:viewfade .25s ease both!important;}
+  .toast{animation:toastfade .2s ease both!important;}
+  .petbubble{animation:petfade .2s ease both!important;}
+  .pfloat{animation:pfloatfade 1.5s ease-out forwards!important;}
+  .overlay,.modal,.toast.off{transition-duration:.01ms!important;}
+  #pet-big,#pet-big.jump,#pet-big.wobble{animation:none!important;}
+  .ck.pop svg{animation:none!important;}
+  .calgrid{transform:none!important;opacity:1!important;}
+}
+@keyframes viewfade{from{opacity:0}to{opacity:1}}
+@keyframes toastfade{from{opacity:0}to{opacity:1}}
+@keyframes petfade{from{opacity:0}to{opacity:1}}
+@keyframes pfloatfade{from{opacity:1}to{opacity:0}}
+@media (prefers-reduced-transparency: reduce){
+  .tabbar{background:var(--card);backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+  .overlay{background:rgba(20,24,23,.66)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+}
 /* ---------- shell ---------- */
 .app{display:grid;grid-template-columns:222px 1fr;min-height:100%;}
 .side{
@@ -73,7 +99,10 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .main{width:100%;max-width:920px;margin:0 auto;box-sizing:border-box;padding:30px 34px 64px;}
 .tabbar{
   display:none;position:fixed;left:0;right:0;bottom:0;z-index:40;
-  background:var(--card);border-top:1px solid var(--hair);
+  background:var(--card);
+  background:color-mix(in srgb, var(--card) 78%, transparent);
+  -webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);
+  border-top:1px solid color-mix(in srgb, var(--hair) 55%, transparent);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
 .tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 7px;color:var(--muted);font-size:11px;}
@@ -86,7 +115,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 }
 /* ---------- shared ---------- */
 .view-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
-.view-head h2{margin:0;font-size:30px;font-weight:600;line-height:1.25;text-wrap:balance;}
+.view-head h2{margin:0;font-size:30px;font-weight:600;line-height:1.25;letter-spacing:.02em;text-wrap:balance;}
 .view-head .sub{color:var(--ink2);}
 .card{background:var(--card);border:1px solid var(--hair);border-radius:var(--r);box-shadow:var(--shadow);}
 .sect{padding:18px 20px;}
@@ -119,12 +148,24 @@ input:hover,select:hover,textarea:hover{border-color:var(--accent-line);}
 }
 .dot{width:8px;height:8px;border-radius:50%;flex:none;}
 .empty{color:var(--muted);text-align:center;padding:26px 10px;font-size:13px;}
+/* 页面切换入场: 短促上浮淡入, 非阻塞可打断 */
+.v-anim{animation:viewin .34s cubic-bezier(.25,1,.35,1) backwards;}
+@keyframes viewin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* 打勾完成: 对勾弹性放大 */
+.ck.pop svg{animation:ckpop .32s cubic-bezier(.3,1.6,.4,1);}
+@keyframes ckpop{from{transform:scale(.4)}60%{transform:scale(1.25)}to{transform:scale(1)}}
 /* toast */
 #toasts{position:fixed;top:14px;right:14px;z-index:90;display:flex;flex-direction:column;gap:9px;max-width:min(340px,calc(100vw - 28px));}
 .toast{
   background:var(--card);border:1px solid var(--hair);border-left:3px solid var(--accent);
   border-radius:11px;box-shadow:var(--shadow);padding:11px 14px;display:flex;gap:10px;align-items:flex-start;
+  animation:toastin .45s cubic-bezier(.25,1,.35,1) backwards;
+  transition:opacity .2s ease,transform .2s ease;
 }
+.toast.off{opacity:0;transform:translateY(-10px);}
+@keyframes toastin{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+@media (max-width:760px){.toast{animation-name:toastin-m;}}
+@keyframes toastin-m{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:none}}
 .toast.warn{border-left-color:var(--danger);}
 .toast b{display:block;font-weight:500;}
 .toast span{color:var(--ink2);font-size:12.5px;}
@@ -197,6 +238,7 @@ input:hover,select:hover,textarea:hover{border-color:var(--accent-line);}
 .calhead{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
 .calhead h3{margin:0;font-size:21px;font-weight:600;flex:1;}
 .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+#cal-grid{touch-action:pan-y;-webkit-user-select:none;user-select:none;} /* 横向手势留给月份滑动, 纵向滚动照常 */
 .wd{ text-align:center;font-size:11.5px;color:var(--muted);padding:4px 0;letter-spacing:1px;}
 .cell{
   position:relative;min-height:62px;border:1px solid var(--hair2);border-radius:10px;
@@ -218,7 +260,7 @@ input:hover,select:hover,textarea:hover{border-color:var(--accent-line);}
 .modetabs{display:inline-flex;background:var(--card2);border-radius:10px;padding:3px;gap:2px;margin-bottom:16px;}
 .modetabs button{padding:6px 16px;border-radius:8px;color:var(--ink2);font-size:13px;}
 .modetabs button.on{background:var(--card);color:var(--ink);font-weight:500;box-shadow:var(--shadow);}
-.readout{font-size:clamp(48px,9vw,72px);letter-spacing:2px;line-height:1.1;font-weight:500;}
+.readout{font-size:clamp(48px,9vw,72px);letter-spacing:0;line-height:1.1;font-weight:500;}
 .readout.running{color:var(--accent);}
 .timerctl{display:flex;gap:10px;margin:18px 0 6px;flex-wrap:wrap;}
 .pomoinfo{display:flex;gap:9px;align-items:center;margin-top:12px;flex-wrap:wrap;}
@@ -238,7 +280,7 @@ input:hover,select:hover,textarea:hover{border-color:var(--accent-line);}
 @media (max-width:760px){.tiles{grid-template-columns:repeat(2,1fr);}}
 .tile{padding:15px 17px;}
 .tile .lb{color:var(--ink2);font-size:12.5px;}
-.tile .v{font-size:27px;font-weight:600;line-height:1.3;margin-top:3px;}
+.tile .v{font-size:27px;font-weight:600;line-height:1.3;margin-top:3px;font-variant-numeric:tabular-nums;}
 .tile .v small{font-size:14px;font-weight:400;color:var(--ink2);margin-left:2px;}
 .statgrid{display:grid;grid-template-columns:1fr;gap:18px;}
 .chartbox{position:relative;padding:6px 8px 2px;}
@@ -334,12 +376,20 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 .pxpal button.on{border-color:var(--accent);}
 .pxpal button.erase{background:var(--card2);border:1px dashed var(--muted);}
 /* ---------- modal ---------- */
-.overlay{position:fixed;inset:0;z-index:60;background:rgba(20,24,23,.45);display:flex;align-items:center;justify-content:center;padding:18px;}
+.overlay{
+  position:fixed;inset:0;z-index:60;background:rgba(20,24,23,.45);
+  -webkit-backdrop-filter:blur(7px) saturate(140%);backdrop-filter:blur(7px) saturate(140%);
+  display:flex;align-items:center;justify-content:center;padding:18px;
+  transition:opacity .24s ease;
+}
+.overlay.off{opacity:0;}
 .modal{
   width:min(480px,100%);max-height:calc(100vh - 60px);overflow:auto;
   background:var(--card);border:1px solid var(--hair);border-radius:16px;box-shadow:var(--shadow);
   padding:22px 24px;
+  transition:transform .34s cubic-bezier(.32,.72,.24,1),opacity .22s ease;
 }
+.overlay.off .modal{transform:scale(.96) translateY(10px);opacity:0;}
 .modal h3{margin:0 0 16px;font-size:19px;font-weight:600;}
 .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .mgrid .full{grid-column:1/-1;}
@@ -572,6 +622,10 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
           <button class="switch on" id="s-sound" role="switch" aria-checked="true" aria-label="提示音"></button>
         </div>
         <div class="setrow">
+          <div class="lab"><b>震动反馈</b><span>打勾、喂宠物、完成番茄钟时轻震一下（部分手机支持）</span></div>
+          <button class="switch on" id="s-haptic" role="switch" aria-checked="true" aria-label="震动反馈"></button>
+        </div>
+        <div class="setrow">
           <div class="lab"><b>浏览器通知</b><span>页面不在前台时也能收到系统通知</span></div>
           <button class="switch" id="s-notify" role="switch" aria-checked="false" aria-label="浏览器通知"></button>
         </div>
@@ -721,7 +775,7 @@ function seed(){
       S(2,"GCN 预热 · 图表示基础",...hr(dstr(y1),15,30,50),dstr(y1)),
       S(3,"英语精读",...hr(t,8,10,25),t),
     ],
-    settings: {ahead:10,sound:true,notify:false,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""},
+    settings: {ahead:10,sound:true,notify:false,haptic:true,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""},
     pet: petDefault(),
     timer: null,
     fired: {}
@@ -733,7 +787,7 @@ function load(){
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.tasks)) return null;
-    d.settings = Object.assign({ahead:10,sound:true,notify:false,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
+    d.settings = Object.assign({ahead:10,sound:true,notify:false,haptic:true,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
     d.sessions = d.sessions||[]; d.fired = d.fired||{}; d.timer = d.timer||null;
     d.pet = fixPet(d.pet);
     return d;
@@ -1136,6 +1190,7 @@ $("#pet-wrap").addEventListener("click", ()=>{
   if (n < 3){ db.pet.mood = Math.min(100, db.pet.mood + 2); }
   petAnim.jumpUntil = Date.now() + 500;
   petFx(n < 3 ? "❤" : "♪");
+  buzz(8);
   petSay(Math.random() < .6 ? "stroke" : s);
   save(); renderPet();
 });
@@ -1146,6 +1201,7 @@ $("#pet-feed").onclick = ()=>{
   db.pet.hunger = Math.min(100, db.pet.hunger + 14);
   db.pet.mood = Math.min(100, db.pet.mood + 4);
   petFx("🍚", 2);
+  buzz([12,50,16]);
   petSay("feed");
   if (petState() !== "sleep") petAnim.jumpUntil = Date.now() + 500;
   save(); renderPet();
@@ -1274,9 +1330,14 @@ function toast(title, sub, warn){
   el.className = "toast" + (warn ? " warn" : "");
   el.innerHTML = `<div><b>${esc(title)}</b>${sub?`<span>${esc(sub)}</span>`:""}</div>
     <button class="iconbtn" aria-label="关闭"><svg class="i" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button>`;
-  el.querySelector("button").onclick = () => el.remove();
+  el.querySelector("button").onclick = () => dropToast(el);
   $("#toasts").appendChild(el);
-  setTimeout(()=>{ el.remove(); }, 9000);
+  setTimeout(()=>dropToast(el), 9000);
+}
+function dropToast(el){
+  if (!el.isConnected || el.classList.contains("off")) return;
+  el.classList.add("off");
+  setTimeout(()=>el.remove(), 210);
 }
 const tip = $("#tip");
 function bindTip(el, text){
@@ -1290,6 +1351,10 @@ function bindTip(el, text){
 }
 /* 提示音 */
 let actx = null;
+function buzz(p){
+  if (!db.settings.haptic) return;
+  try{ if (navigator.vibrate) navigator.vibrate(p); }catch(e){}
+}
 function beep(){
   if (!db.settings.sound) return;
   try{
@@ -1310,14 +1375,26 @@ function sysNotify(title, body){
   if (!db.settings.notify || !("Notification" in window)) return;
   try{ if (Notification.permission === "granted") new Notification(title, {body}); }catch(e){}
 }
-/* 模态框 */
+/* 模态框: 玻璃材质入场(模糊+缩放), 出入同路径 */
+let modalTimer = 0;
 function openModal(html){
+  clearTimeout(modalTimer);
+  const ov = $("#overlay");
   $("#modal").innerHTML = html;
-  $("#overlay").hidden = false;
+  ov.hidden = false;
+  ov.classList.add("off");
+  void ov.offsetWidth;
+  ov.classList.remove("off");
   const f = $("#modal").querySelector("input,select,textarea,button");
   if (f) f.focus();
 }
-function closeModal(){ $("#overlay").hidden = true; $("#modal").innerHTML = ""; }
+function closeModal(){
+  const ov = $("#overlay");
+  if (ov.hidden) return;
+  ov.classList.add("off");
+  clearTimeout(modalTimer);
+  modalTimer = setTimeout(()=>{ ov.hidden = true; $("#modal").innerHTML = ""; }, 250);
+}
 $("#overlay").addEventListener("mousedown", e=>{ if (e.target === $("#overlay")) closeModal(); });
 document.addEventListener("keydown", e=>{ if (e.key === "Escape") closeModal(); });
 
@@ -1329,6 +1406,11 @@ function showView(v){
   ["today","cal","timer","stats","set","pet"].forEach(k=>{ $("#v-"+k).hidden = k !== v; });
   document.querySelectorAll(".navbtn,.tabbar button").forEach(b=>b.classList.toggle("on", b.dataset.v === v));
   try{ localStorage.setItem("rike-view", v); }catch(e){}
+  if (showView.ready){
+    const s = $("#v-"+v);
+    s.classList.remove("v-anim"); void s.offsetWidth; s.classList.add("v-anim");
+  }
+  showView.ready = 1;
   if (v === "cal") renderCal();
   if (v === "stats") renderStats();
   if (v === "timer") renderSessions();
@@ -1336,6 +1418,8 @@ function showView(v){
 }
 $("#nav").addEventListener("click", e=>{ const b = e.target.closest(".navbtn"); if (b) showView(b.dataset.v); });
 $("#tabbar").addEventListener("click", e=>{ const b = e.target.closest("button"); if (b) showView(b.dataset.v); });
+/* iOS Safari: 有 touch 监听才会在按压时应用 :active 反馈 */
+addEventListener("touchstart", ()=>{}, {passive:true});
 
 /* ================= 今日 ================= */
 function occursOn(t, ds){
@@ -1451,7 +1535,14 @@ $("#today-list").addEventListener("click", e=>{
   if (!row) return;
   const t = db.tasks.find(x=>x.id===row.dataset.id);
   if (!t) return;
-  if (!btn || btn.dataset.act==="done"){ toggleDone(t, todayStr()); purgeSample(); save(); renderToday(); renderCal(); updateNext(); return; }
+  if (!btn || btn.dataset.act==="done"){
+    toggleDone(t, todayStr());
+    const justDone = isDone(t, todayStr());
+    if (justDone) buzz(12);
+    purgeSample(); save(); renderToday(); renderCal(); updateNext();
+    if (justDone){ const ck = document.querySelector(`#today-list .trow[data-id="${t.id}"] .ck`); ck && ck.classList.add("pop"); }
+    return;
+  }
   if (btn.dataset.act==="edit") taskModal(t.date, t.id);
   if (btn.dataset.act==="del"){ db.tasks = db.tasks.filter(x=>x!==t); save(); renderToday(); renderCal(); updateNext(); }
 });
@@ -1540,6 +1631,9 @@ $("#clear-sample").onclick = ()=>{ purgeSample(); save(); renderToday(); renderC
 let calY = new Date().getFullYear(), calM = new Date().getMonth();
 let selDate = todayStr();
 function renderCal(){
+  /* 若滑动动画未落定, 先完成待定的换月 */
+  if (calSwipe.pending){ calShift(calSwipe.pending); calSwipe.pending = 0; }
+  cancelAnimationFrame(calSwipe.raf);
   $("#cal-title").textContent = `${calY}年${calM+1}月`;
   const monthTasks = db.tasks.filter(t=>t.date.startsWith(`${calY}-${pad(calM+1)}`));
   const planMin = monthTasks.reduce((s,x)=>{const a=minsOf(x.start),b=minsOf(x.end);return s+(a!=null&&b!=null?b-a:0);},0);
@@ -1565,11 +1659,122 @@ function renderCal(){
       <span class="dots">${dots}${more}</span></button>`;
   }
   $("#cal-grid").innerHTML = html;
+  calSwipe.x = 0;
+  $("#cal-grid").style.transform = "";
+  $("#cal-grid").style.opacity = "";
+  $("#cal-grid").style.willChange = "";
   renderDayPanel();
 }
-$("#cal-prev").onclick = ()=>{ calM--; if (calM<0){calM=11;calY--;} renderCal(); };
-$("#cal-next").onclick = ()=>{ calM++; if (calM>11){calM=0;calY++;} renderCal(); };
-$("#cal-today").onclick = ()=>{ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); selDate=todayStr(); renderCal(); };
+/* ---------- 日历滑动手势 ----------
+   手指 1:1 跟手拖动; 松手按速度动量投影决定翻月或回弹;
+   弹簧临界阻尼落位; 换月在飞行途中完成, 运动方向不中断 */
+const calSwipe = {x:0, raf:0, pending:0, drag:null, suppress:false};
+const calReduced = ()=> matchMedia("(prefers-reduced-motion: reduce)").matches;
+const calShift = d => { calM += d; if (calM < 0){ calM = 11; calY--; } if (calM > 11){ calM = 0; calY++; } };
+function calPaint(x, w){
+  const g = $("#cal-grid");
+  calSwipe.x = x;
+  g.style.transform = x ? `translateX(${x}px)` : "";
+  g.style.opacity = x ? String(Math.max(.08, 1 - Math.pow(Math.min(1, Math.abs(x)/(w*.72)), 1.4)*.95)) : "";
+}
+function calSpringBack(v0){
+  const g = $("#cal-grid");
+  const w = g.getBoundingClientRect().width || 340;
+  calSwipe.pending = 0;
+  cancelAnimationFrame(calSwipe.raf);
+  let x = calSwipe.x, v = v0, last = performance.now();
+  const k = (2*Math.PI/.32)**2, c = 2*Math.sqrt(k);
+  g.style.willChange = "transform";
+  const step = now=>{
+    const dt = Math.min((now-last)/1000, .032); last = now;
+    v += (-k*x - c*v)*dt; x += v*dt;
+    if (Math.abs(x) < .5 && Math.abs(v) < 10){ calPaint(0, w); g.style.willChange = ""; return; }
+    calPaint(x, w);
+    calSwipe.raf = requestAnimationFrame(step);
+  };
+  calSwipe.raf = requestAnimationFrame(step);
+}
+function calFling(delta, x0, v0){
+  const g = $("#cal-grid");
+  const w = g.getBoundingClientRect().width || 340;
+  cancelAnimationFrame(calSwipe.raf);
+  const exitX = (delta > 0 ? -1 : 1) * w*.62;
+  let x = x0, v = v0, last = performance.now(), swapped = false;
+  g.style.willChange = "transform";
+  const k = (2*Math.PI/.3)**2, c = 2*Math.sqrt(k);
+  const step = now=>{
+    const dt = Math.min((now-last)/1000, .032); last = now;
+    if (!swapped){
+      v += (-k*(x-exitX) - c*v)*dt; x += v*dt;
+      if (Math.abs(x) >= w*.5){
+        swapped = true;
+        calSwipe.pending = delta;
+        renderCal();                 /* renderCal 内完成换月 */
+        x = delta * w*.38;           /* 新月从反侧同向进场 */
+        v = v*.22;
+      }
+    } else {
+      v += (-k*x - c*v)*dt; x += v*dt;
+      if (Math.abs(x) < .5 && Math.abs(v) < 10){ calPaint(0, w); g.style.willChange = ""; return; }
+    }
+    calPaint(x, w);
+    calSwipe.raf = requestAnimationFrame(step);
+  };
+  calSwipe.raf = requestAnimationFrame(step);
+}
+function calGo(delta){
+  if (calReduced()){ calShift(delta); renderCal(); return; }
+  if (calSwipe.pending) renderCal();  /* 先落定上一页 */
+  calFling(delta, 0, -delta*640);
+}
+const calG = $("#cal-grid");
+calG.addEventListener("pointerdown", e=>{
+  if (calReduced()) return;
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  cancelAnimationFrame(calSwipe.raf);
+  calSwipe.drag = {id:e.pointerId, x0:e.clientX, y0:e.clientY, off:calSwipe.x, locked:false,
+                   hist:[[performance.now(), e.clientX]]};
+});
+calG.addEventListener("pointermove", e=>{
+  const d = calSwipe.drag;
+  if (!d || e.pointerId !== d.id) return;
+  const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+  if (!d.locked){
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    if (Math.abs(dx) <= Math.abs(dy)){ calSwipe.drag = null; return; }  /* 纵向让给页面滚动 */
+    d.locked = true;
+    try{ calG.setPointerCapture(e.pointerId); }catch(err){}
+  }
+  const now = performance.now();
+  d.hist.push([now, e.clientX]); if (d.hist.length > 6) d.hist.shift();
+  const w = calG.getBoundingClientRect().width || 340;
+  calPaint(d.off + dx, w);
+});
+calG.addEventListener("pointerup", e=>{
+  const d = calSwipe.drag;
+  if (!d || e.pointerId !== d.id) return;
+  calSwipe.drag = null;
+  if (!d.locked) return;              /* 普通点按: 交给 click 选日期 */
+  calSwipe.suppress = true;           /* 拖拽结束, 吞掉后续 click */
+  const now = performance.now();
+  const h = d.hist.filter(a=>now - a[0] < 100);
+  const v = h.length >= 2 ? (e.clientX - h[0][1]) / Math.max(1, now - h[0][0]) * 1000 : 0;
+  const w = calG.getBoundingClientRect().width || 340;
+  const x = calSwipe.x;
+  if (Math.abs(x + v*.42) > w*.22) calFling(x + v*.42 < 0 ? 1 : -1, x, v);
+  else calSpringBack(v);
+});
+calG.addEventListener("pointercancel", ()=>{
+  if (!calSwipe.drag) return;
+  calSwipe.drag = null;
+  calSpringBack(0);
+});
+calG.addEventListener("click", e=>{
+  if (calSwipe.suppress){ e.stopPropagation(); e.preventDefault(); calSwipe.suppress = false; }
+}, true);
+$("#cal-prev").onclick = ()=>calGo(-1);
+$("#cal-next").onclick = ()=>calGo(1);
+$("#cal-today").onclick = ()=>{ calSwipe.pending = 0; const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); selDate=todayStr(); renderCal(); };
 $("#cal-grid").addEventListener("click", e=>{ const c = e.target.closest(".cell"); if (c){ selDate = c.dataset.d; renderCal(); } });
 function renderDayPanel(){
   const ts = tasksOf(selDate).sort((a,b)=>(minsOf(a.start)??1e9)-(minsOf(b.start)??1e9));
@@ -1611,10 +1816,16 @@ $("#daypanel").addEventListener("click", e=>{
   const row = e.target.closest(".trow"); if (!row) return;
   const t = db.tasks.find(x=>x.id===row.dataset.id); if (!t) return;
   const act = e.target.closest("[data-act]")?.dataset.act;
-  if (!act || act==="done"){ toggleDone(t, selDate); purgeSample(); }
+  if (!act || act==="done"){
+    toggleDone(t, selDate);
+    const justDone = isDone(t, selDate);
+    if (justDone) buzz(12);
+    purgeSample();
+  }
   else if (act==="edit"){ taskModal(t.date, t.id); return; }
   else if (act==="del"){ db.tasks = db.tasks.filter(x=>x!==t); }
   save(); renderCal(); renderToday(); updateNext();
+  if (act==="done" && isDone(t, selDate)){ const ck = document.querySelector(`#daypanel .trow[data-id="${t.id}"] .ck`); ck && ck.classList.add("pop"); }
 });
 /* MD 导入导出 */
 function exportMD(date){
@@ -1739,6 +1950,7 @@ function finishTimer(auto){
   db.timer = null; save();
   setTimerButtons(); renderReadout(); renderSessions(); renderToday(); renderStats?.();
   if (sec >= 60) toast(auto?"番茄钟专注完成":"已记录", `${t.subj||cats()[t.cat]} · ${fmtDur(sec)}`);
+  if (sec >= 60) buzz([24,60,24]);
 }
 $("#t-finish").onclick = ()=>finishTimer(0);
 /* 番茄钟引擎 */
@@ -1748,7 +1960,7 @@ setInterval(()=>{
     const len = (t.phase==="work"?db.settings.pw:db.settings.pr)*60000;
     if (timerElapsed()*1000 >= len){
       if (t.phase==="work"){
-        beep(); sysNotify("番茄钟：专注完成", `休息 ${db.settings.pr} 分钟`);
+        beep(); buzz([24,60,24]); sysNotify("番茄钟：专注完成", `休息 ${db.settings.pr} 分钟`);
         toast("专注完成，休息一下", `第 ${t.round} 轮 · 已记录 ${db.settings.pw} 分钟`);
         const sec = db.settings.pw*60;
         const d = new Date(t.startTs);
@@ -1758,7 +1970,7 @@ setInterval(()=>{
         t.phase = "rest"; t.round++; t.startTs = Date.now(); t.pausedAcc = 0;
         renderSessions();
       } else {
-        beep(); sysNotify("番茄钟：休息结束", `开始第 ${t.round} 轮专注`);
+        beep(); buzz(18); sysNotify("番茄钟：休息结束", `开始第 ${t.round} 轮专注`);
         toast("休息结束", `开始第 ${t.round} 轮专注`);
         t.phase = "work"; t.startTs = Date.now(); t.pausedAcc = 0;
       }
@@ -1923,6 +2135,8 @@ function renderSettings(){
   $("#s-ahead").value = String(db.settings.ahead);
   $("#s-sound").classList.toggle("on", db.settings.sound);
   $("#s-sound").setAttribute("aria-checked", db.settings.sound);
+  $("#s-haptic").classList.toggle("on", db.settings.haptic);
+  $("#s-haptic").setAttribute("aria-checked", db.settings.haptic);
   $("#s-notify").classList.toggle("on", db.settings.notify);
   $("#s-notify").setAttribute("aria-checked", db.settings.notify);
   $("#s-pw").value = db.settings.pw;
@@ -1945,6 +2159,10 @@ $("#s-ahead").onchange = e=>{ db.settings.ahead = +e.target.value; save(); };
 $("#s-sound").onclick = e=>{
   db.settings.sound = !db.settings.sound; save(); renderSettings();
   if (db.settings.sound) beep();
+};
+$("#s-haptic").onclick = e=>{
+  db.settings.haptic = !db.settings.haptic; save(); renderSettings();
+  if (db.settings.haptic) buzz(18);
 };
 $("#s-notify").onclick = async ()=>{
   if (!db.settings.notify){
@@ -2004,7 +2222,7 @@ $("#s-import-btn").onclick = ()=>{
     const d = JSON.parse($("#s-import").value);
     if (!d || !Array.isArray(d.tasks) || !Array.isArray(d.sessions)) throw 0;
     db = d;
-    db.settings = Object.assign({ahead:10,sound:true,notify:false,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
+    db.settings = Object.assign({ahead:10,sound:true,notify:false,haptic:true,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
     db.pet = fixPet(db.pet);
     db.fired = db.fired||{}; db.timer = db.timer||null;
     save(); renderAll();
