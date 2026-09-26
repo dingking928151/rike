@@ -369,7 +369,7 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 .petmini:hover{background:var(--card2);}
 .petmini canvas{width:26px;height:26px;image-rendering:pixelated;flex:none;}
 .petmini b{color:var(--ink);font-weight:500;}
-.pxed{display:grid;grid-template-columns:repeat(24,1fr);gap:0;width:min(336px,80vw);margin:0 auto;border:1px solid var(--hair);border-radius:8px;overflow:hidden;touch-action:none;}
+.pxed{display:grid;grid-template-columns:repeat(32,1fr);gap:0;width:min(352px,84vw);margin:0 auto;border:1px solid var(--hair);border-radius:8px;overflow:hidden;touch-action:none;}
 .pxed button{aspect-ratio:1;border:0;padding:0;min-width:0;min-height:0;}
 .pxpal{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0 4px;}
 .pxpal button{width:26px;height:26px;border-radius:8px;border:2px solid transparent;padding:0;}
@@ -807,190 +807,249 @@ const colOf = i => db.settings.catCols?.[i] || CAT_POOL[i % CAT_POOL.length];
 
 /* ================= 小窝 · 像素宠物 ================= */
 /* 帧字符: . 透明 B身体 D深 W白 E眼 P粉 A强调(喙/脚/肚) */
+/* v3 立绘 32×32 · 画法学自宝可梦水晶立绘 + 原版拓麻歌子
+   要点: 本色加深描边 / 大眼低位+左上白高光 / 小口鼻不连眼 / 小圆脚坨 / 圆角剪影 */
 const PET_ART = [
-{name:"橘猫", pal:{B:"#E8A860",D:"#A06830",W:"#FBF6EC",E:"#2E2A26",P:"#E89898",A:"#E8A860"},
+{name:"橘猫", pal:{B:"#E8A860",D:"#A06830",W:"#FBF6EC",E:"#2E2A26",P:"#E89898",A:"#C88240"},
  art:[
-"........................",
-"..DD..............DD....",
-".DBBD............DBBD...",
-".DBPD............DPBD...",
-".DBBDDDDDDDDDDDDDBBD....",
-".DBBBBBBBBBBBBBBBBBD....",
-".DBBDDDBBBBBBDDDDBBD....",
-".DBBBBBBBBBBBBBBBBBD....",
-".DBWEBBBBBBBBBBBWEBBD...",
-".DBWEBBBBBBBBBBBWEBBD...",
-".DBBBBBBBBBBBBBBBBBD....",
-".DBBPPBBBBBBBBBBPPBBD...",
-".DBBBBBBBBPPBBBBBBBD....",
-".DBBBBBBBBDDBBBBBBBD....",
-"..DBBBBBBBBBBBBBBBD.....",
-"...DDDDDDDDDDDDDDDD.....",
-"...DBBBWWWWWWWWBBBD.....",
-"..DBBBBWWWWWWWWBBBBD....",
-".DBBBBBWWWWWWWWBBBBBD...",
-".DBBDDBWWWWWWWWBDBBBD...",
-".DBBDBBWWWWWWWWBDBBBD...",
-".DBBD.DWWWWWWWW..DBBD...",
-".DBBD..DDDDDDDD..DBBD...",
-"..DD..DD......DD..DD...."]},
+"................................",
+"................................",
+"........D..............D........",
+".......DBD............DBD.......",
+"......DBPBD..........DBPBD......",
+"......DBBPBD........DBPBBD......",
+"......DDDDDD........DDDDDD......",
+"......DBBBBBBBBBBBBBBBBBBD......",
+".....DBBBBBBBBBBBBBBBBBBBBD.....",
+".....DBBBBBBBBBBBBBBBBBBBBD.....",
+".....DBBBWEBBBBBBBBBBEWBBBD.....",
+".....DBBBWEBBBBBBBBBBEWBBBD.....",
+".....DBBBEEBBBBBBBBBBEEBBBD.....",
+".....DBPPBBBBWWWWWWBBBBPPBD.....",
+".....DBBBBBBBWWEEWWBBBBBBBD.....",
+".....DBBBBBBBWEWWEWBBBBBBBD.....",
+".....DBBBBBBBBWWWWBBBBBBBBD.....",
+"......DBBBBBBBBBBBBBBBBBBD......",
+"........DBBBBBBBBBBBBBBD........",
+".......DBBBBBBBBBBBBBBBBD.......",
+".......DBBBBBBBWWBBBBBBDDDD.....",
+".......DBBBBBBWWWWBBBBBDDBBBD...",
+".......DBBBBBBWWWWBBBBBDDBBBD...",
+".......DBBBBBBWWWWBBBBBDDDD.....",
+".......DBBBBBBBWWBBBBBBD........",
+".......DBBBBBBBBBBBBBBBBD.......",
+"........DBBBBBBBBBBBBBBD........",
+".........DBBBBDDDDBBBBD.........",
+"..........DDDD....DDDD..........",
+"................................",
+"................................",
+"................................"]},
 {name:"柴犬", pal:{B:"#E0A060",D:"#8A5A28",W:"#FDF8F0",E:"#2E2A26",P:"#D88888",A:"#FDF8F0"},
  art:[
-"........................",
-"...DD..........DD.......",
-"..DBBD........DBBD......",
-"..DBBD........DBBD......",
-"..DBBDDDDDDDDDBBBD......",
-"..DBBBBBBBBBBBBBD.......",
-".DBBBBBBBBBBBBBBBD......",
-".DBBWBBBBBBBBBWBB.......",
-".DBBWWBBBBBBBWWBBD......",
-".DBWWWWBBBBBBWWWBD......",
-".DBBWWBBBBBBBWWBBD......",
-".DBBBBBBBPPBBBBBBD......",
-".DBBBBBBBDDBBBBBBD......",
-".DBBBBBBWDDWBBBBBD......",
-".DBBBBWWWWWWWWBBBD......",
-"..DBBWWWWWWWWWWBBD......",
-"..DBBWWWWWWWWWWBBD......",
-".DBBBWWWWWWWWWWBBBD.....",
-".DBBBBWWWWWWWWBBBBD.....",
-".DBBBBBWWWWWWBBBBBD.....",
-".DBBDDBWWWWWWBDBBBD.....",
-".DBBDBBWWWWWWBDBBBD.....",
-".DBBD..DDDDDD..DBBD.....",
-"..DD..DD....DD..DD......"]},
+"................................",
+"................................",
+"........D..............D........",
+".......DBD............DBD.......",
+"......DBBBD..........DBBBD......",
+"......DBPBD..........DBPBD......",
+"......DDDDD..........DDDDD......",
+"......DBBBBBBBBBBBBBBBBBBD......",
+".....DBBBBBBBBBBBBBBBBBBBBD.....",
+".....DBBBBBBBBBBBBBBBBBBBBD.....",
+".....DBBBWEBBBBBBBBBBEWBBBD.....",
+".....DBBBWEBBBBBBBBBBEWBBBD.....",
+".....DBBBEEBBBBBBBBBBEEBBBD.....",
+".....DBPPBBBBWWWWWWBBBBPPBD.....",
+".....DBBBBBBBWWWWWWBBBBBBBD.....",
+".....DBBBBBBBWEEEEWBBBBBBBD.....",
+".....DBBBBBBBWWPPWWBBBBBBBD.....",
+"......DBBBBBBBBBBBBBBBBBBD......",
+"........DBBBBBBBBBBBBBBD........",
+".......DBBBBBBBBBBBBBBBBD.......",
+".......DBBBBBBBWWBBBBBBDDDD.....",
+".......DBBBBBBWWWWBBBBBDDBBWD...",
+".......DBBBBBBWWWWBBBBBDDBBWD...",
+".......DBBBBBBWWWWBBBBBDDDD.....",
+".......DBBBBBBBWWBBBBBBD........",
+".......DBBBBBBBBBBBBBBBBD.......",
+"........DBBBBBBBBBBBBBBD........",
+".........DBBBBDDDDBBBBD.........",
+"..........DDDD....DDDD..........",
+"................................",
+"................................",
+"................................"]},
 {name:"兔子", pal:{B:"#F5F0E8",D:"#B09880",W:"#FFFFFF",E:"#2E2A26",P:"#E89AA8",A:"#F5F0E8"},
  art:[
-"........................",
-"...DDD........DDD.......",
-"..DBBBD......DBBBD......",
-"..DBPBD......DBPBD......",
-"..DBPBD......DBPBD......",
-"..DBBBD......DBBBD......",
-"..DBBBDDDDDDDBBBD.......",
-"..DBBBBBBBBBBBBBD.......",
-".DBBBBBBBBBBBBBBBD......",
-".DBWEBBBBBBBBBBWEBBD....",
-".DBWEBBBBBBBBBBWEBBD....",
-".DBBBBBBPPPPBBBBBBD.....",
-".DBBBBBBBBBBBBBBBD......",
-".DBBPPBBBBBBBBBBPPBD....",
-".DBBBBBBWWWWBBBBBBD.....",
-"..DBBBBBWWWWBBBBBD......",
-"..DBBBWWWWWWWWBBBD......",
-".DBBBWWWWWWWWWWBBBD.....",
-".DBBBWWWWWWWWWWBBBD.....",
-".DBBBBBWWWWWWBBBBBD.....",
-".DBBDDBWWWWWWBDBBBD.....",
-".DBBDBBWWWWWWBDBBBD.....",
-".DBBD..DDDDDD..DBBD.....",
-"..DD..DD....DD..DD......"]},
+"................................",
+"................................",
+".......D................D.......",
+"......DBD..............DBD......",
+"......DBPBD..........DBPBD......",
+".....DBPPBD..........DBPPBD.....",
+".....DBPPBD..........DBPPBD.....",
+".....DBPPBD..........DBPPBD.....",
+".....DBBBBD..........DBBBBD.....",
+".....DDDDDD..........DDDDDD.....",
+".....DBBBBBBBBBBBBBBBBBBBBD.....",
+"....DBBBBBBBBBBBBBBBBBBBBBBD....",
+"....DBBBBWEBBBBBBBBBBEWBBBBD....",
+"....DBBBBWEBBBBBBBBBBEWBBBBD....",
+"....DBBBBEEBBBBBBBBBBEEBBBBD....",
+"....DBBPPBBBBWWEEWWBBBBPPBBD....",
+"....DBBBBBBBBWEWWEWBBBBBBBBD....",
+"....DBBBBBBBBBWWWWBBBBBBBBBD....",
+".....DBBBBBBBBBBBBBBBBBBBBD.....",
+"......DBBBBBBBBBBBBBBBBBBD......",
+".......DBBBBBBBBBBBBBBBBD.......",
+".......DBBBBBWWWWWWBBBBBD.......",
+".......DBBBBWWWWWWWWBBBBD.......",
+"......DBBBBBWWWWWWWWBBBBBD......",
+"......DBBBBBWWWWWWWWBBBBBD......",
+".......DBBBBBWWWWWWBBBBBD.......",
+".......DBBBBBBBBBBBBBBBBD.......",
+"........DBBBBBBBBBBBBBBD........",
+".........DBBBBDDDDBBBBD.........",
+"..........DDDD....DDDD..........",
+"................................",
+"................................"]},
 {name:"小鸡", pal:{B:"#F0C84A",D:"#B8902A",W:"#FDFCF8",E:"#2E2A26",P:"#F0A060",A:"#E8823A"},
  art:[
-"........................",
-".........DD.............",
-"........DDBD............",
-".......DDDDDD...........",
-"......DDBBBBDD..........",
-".....DBBBBBBBBD.........",
-"....DBBBBBBBBBBD........",
-"....DBEBBBBBBEBD........",
-"....DBEBBBBBBEBD........",
-"....DBBBBBBBBBD.........",
-"....DBBBWAABBBBD........",
-"....DBBBWAABBBBD........",
-"....DBBBBPPBBBBD........",
-"....DBBBBBBBBBD.........",
-"....DDBWWWWWBDD.........",
-"....DBBWWWWWBBD.........",
-"...DBBBWWWWWBBBD........",
-"..DBBBBWWWWWBBBBD.......",
-"..DBBBBBWWWBBBBBD.......",
-"..DBBBBBBBBBBBBBD.......",
-"...DBBDDBBBBDBBD........",
-"....DD.DDDDDD.DD........",
-".....DA......AD.........",
-"....DA........AD........"]},
+"................................",
+"................................",
+"...............DD...............",
+"...............DD...............",
+"..............D..D..............",
+"............DBBBBBBD............",
+"...........DBBBBBBBBD...........",
+"..........DBBBBBBBBBBD..........",
+".........DBBBBBBBBBBBBD.........",
+"........DBBBBBBBBBBBBBBD........",
+"........DBBWEBBBBBBEWBBD........",
+"........DBBWEBBBBBBEWBBD........",
+"........DBBEEBBBBBBEEBBD........",
+".......DBBBBBBBBBBBBBBBBD.......",
+"......DBPPBBBBBBBBBBBBPPBD......",
+"......DBBBBBBBAAAABBBBBBBD......",
+"......DBBBBBBBBAABBBBBBBBD......",
+"......DBBBBBBBBBBBBBBBBBBD......",
+".......DBBBBBBBBBBBBBBBBD.......",
+".....DBBBBWWWWWWWWWWWWBBBBD.....",
+".....DBBBBWWWWWWWWWWWWBBBBD.....",
+".....DBBBBWWWWWWWWWWWWBBBBD.....",
+".....DBBBBBBWWWWWWWWBBBBBBD.....",
+"......DBBBBBBBWWWWBBBBBBBD......",
+".......DBBBBBBBBBBBBBBBBD.......",
+"........DBBBBBBBBBBBBBBD........",
+".........DBBBBBBBBBBBBD.........",
+"..........AA........AA..........",
+".........AAAA......AAAA.........",
+"................................",
+"................................",
+"................................"]},
 {name:"青蛙", pal:{B:"#7BAE5A",D:"#4A7A32",W:"#FDFCF8",E:"#2E2A26",P:"#E8A0A0",A:"#DCE8BC"},
  art:[
-"........................",
-"........................",
-"...DDD..........DDD.....",
-"..DBBBD........DBBBD....",
-".DBBWBD........DBWBD....",
-".DBBWBD........DBWBD....",
-".DBBBBDDDDDDDDDBBBD.....",
-".DBBBBBBBBBBBBBBBBD.....",
-"DBBBBBBBBBBBBBBBBBBD....",
-"DBBBBBBBBBBBBBBBBBBD....",
-"DBBPBBBBBBBBBBBBPPBBD...",
-"DBBBBDDBBBBBBBDBBBBBD...",
-"DBBBBDDBBBBBBBDBBBBBD...",
-"DBAAABBBBBBBBBBBAAABD...",
-"DBAAABBBBBBBBBBBAAABD...",
-".DBBBBBBBBBBBBBBBBD.....",
-".DBAAAWWWWWWWWAAABD.....",
-".DBAAWWWWWWWWWWABD......",
-"..DBBWWWWWWWWWWBD.......",
-"..DBBWWWWWWWWWWBD.......",
-"...DBBWWWWWWWWBD........",
-"...DBBDBBBBBBBDBD.......",
-"...DBD.DBDDD.DBD........",
-"....D..DD..DD..D........"]},
-{name:"熊猫", pal:{B:"#F5F2EA",D:"#2E2A26",W:"#F5F2EA",E:"#2E2A26",P:"#C8B8B8",A:"#2E2A26"},
+"................................",
+"................................",
+"................................",
+"................................",
+".........DD..........DD.........",
+"........DBBD........DBBD........",
+".......DBBBD........DBBBD.......",
+".......DBEWD........DWEBD.......",
+".......DBEED........DEEBD.......",
+"........DDDD........DDDD........",
+".......DBBBBBBBBBBBBBBBBD.......",
+"......DBBBBBBBBBBBBBBBBBBD......",
+"......DBBBBBBEBBBBEBBBBBBD......",
+"......DPPBDDDDDDDDDDDDBPPD......",
+"......DBBDBBBBBBBBBBBBDBBD......",
+"......DBBBBBBBBBBBBBBBBBBD......",
+"......DBBBBWWWWWWWWWWBBBBD......",
+"......DBBBWWWWWWWWWWWWBBBD......",
+"......DBBBWWWWWWWWWWWWBBBD......",
+"......DBBBWWWWWWWWWWWWBBBD......",
+"......DBBBBWWWWWWWWWWBBBBD......",
+"......DBBBBBWWWWWWWWBBBBBD......",
+"......DBBBBBBBBBBBBBBBBBBD......",
+".......DBBBBBBBBBBBBBBBBD.......",
+"........DBBBBBBBBBBBBBBD........",
+"........DBBBD......DBBBD........",
+".........DDD........DDD.........",
+"................................",
+"................................",
+"................................",
+"................................",
+"................................"]},
+{name:"熊猫", pal:{B:"#F5F2EA",D:"#35302B",W:"#FFFFFF",E:"#2E2A26",P:"#E89AA8",A:"#35302B"},
  art:[
-"........................",
-"...DDDD........DDDD.....",
-"..DDDDDD......DDDDDD....",
-"..DDDDD........DDDDD....",
-"...DDDDDDDDDDDDDDD......",
-"..DDBBBBBBBBBBBBDD......",
-".DBBBBBBBBBBBBBBBBD.....",
-".DBDDDBBBBBBBBDDDBBD....",
-".DBDDDDBBBBBBDDDDBBD....",
-".DBBDWEBBBBBBBEWEBBD....",
-".DBBDWEBBBBBBBEWEBBD....",
-".DBBBBBBBPPBBBBBBBD.....",
-".DBBBBBBBDDBBBBBBBD.....",
-".DBBBBBBWDDWBBBBBBD.....",
-".DBBBBBWWWWWWBBBBBD.....",
-"..DBBBBWWWWWWBBBBD......",
-"..DDBBWWWWWWWWBBDD......",
-".DBDDDBWWWWWWWBDDDBD....",
-".DBDDDBWWWWWWWBDDDBD....",
-".DBBBBWWWWWWWWWBBBBD....",
-".DBBBBWWWWWWWWWBBBBD....",
-".DBBDDBWWWWWWWBDBBBD....",
-".DBBDBBWWWWWWWBDBBBD....",
-".DBBD..DDDDDDD..DBBD...."]},
+"................................",
+"................................",
+"................................",
+"........DD............DD........",
+".......DDD............DDD.......",
+"......DDDD............DDDD......",
+"......DDDDD..........DDDDD......",
+"......DBBBBBBBBBBBBBBBBBBD......",
+".....DBBBBBBBBBBBBBBBBBBBBD.....",
+".....DBBBBBBBBBBBBBBBBBBBBD.....",
+".....DBBDDDDBBBBBBBBDDDDBBD.....",
+".....DBBDEWEBBBBBBBBEWEDBBD.....",
+".....DBBDEWEBBBBBBBBEWEDBBD.....",
+".....DBBBDDDBBBBBBBBDDDBBBD.....",
+".....DPPBBBBBBBEEBBBBBBBPPD.....",
+".....DBBBBBBBBEBBEBBBBBBBBD.....",
+".....DBBBBBBBBBBBBBBBBBBBBD.....",
+"......DBBBBBBBBBBBBBBBBBBD......",
+"........DBBBBBBBBBBBBBBD........",
+".......DBDDDBBBBBBBBDDDBD.......",
+".......DBDDDBBBBBBBBDDDBD.......",
+".......DBDDDBBBBBBBBDDDBD.......",
+".......DBBDDBBBBBBBBDDBBD.......",
+".......DBBBBBBBBBBBBBBBBD.......",
+".......DBBBBBBBBBBBBBBBBD.......",
+"........DBBBBBBBBBBBBBBD........",
+".........DDDD......DDDD.........",
+"..........DDD......DDD..........",
+"................................",
+"................................",
+"................................",
+"................................"]},
 ];
 const PET_EGG = {pal:{B:"#EFE8D8",D:"#A08858",W:"#FDFCF8",E:"#2E2A26",P:"#E89898",A:"#D9C79F"},
  art:[
-"........................",
-"........................",
-"........................",
-"........DDDDDD..........",
-".......DBBBBBBD.........",
-"......DBBBWWBBBD........",
-".....DBBBBWWBBBBD.......",
-".....DBBBBBBBBBBD.......",
-"....DBBBWWBBBBBBD.......",
-"....DBBBWWBBBBBBD.......",
-"....DBBBBBBBBBBBD.......",
-"....DBBBBWWBBBBBD.......",
-"....DBBBBWWBBBBBD.......",
-"....DBBBBBBBBBBBD.......",
-".....DBBBBBBBBBD........",
-".....DBBWWBBBBD.........",
-"......DBBBBBBBD.........",
-".......DDBBBD...........",
-".....DAAAAAAAAAD........",
-"....DAAWAAAWAAAWAD......",
-"...DAWAAAWAAAWAAAWAD....",
-"..DAAAWAAAWAAAWAAAWAD...",
-".DAAAAAAAAAAAAAAAAAAAD..",
-"..DD..DD..DD..DD..DD...."]};
+"................................",
+"................................",
+"................................",
+"..............DDDD..............",
+".............DWWWWD.............",
+"............DWWWWWWD............",
+"...........DWWWWWWWWD...........",
+"...........DWWWWWWWWD...........",
+"..........DWWWBBWWWWWD..........",
+"..........DWWPPWWWWWWD..........",
+".........DWWWWWWWBBWWWD.........",
+".........DWWWWWWWWWWWWD.........",
+".........DWWPPWWWWWWWWD.........",
+".........DWWWWWWWWWWWWD.........",
+"..........DWWWWWWWWWWD..........",
+"...........DWWWWWWWWD...........",
+"............DWWWWWWD............",
+".............DWWWWD.............",
+"..............DDDD..............",
+".....DDDDDDDDDDDDDDDDDDDDDD.....",
+".....DAAAAAAAAAAAAAAAAAAAAD.....",
+".....DAADAAAAADAAAAADAAAAAD.....",
+".....DAAAAADAAAAADAAAAADAAD.....",
+".....DAADAAAAADAAAAADAAAAAD.....",
+".....DAAAAADAAAAADAAAAADAAD.....",
+".....DAADAAAAADAAAAADAAAAAD.....",
+".....DDDDDDDDDDDDDDDDDDDDDD.....",
+"........DDDDDDDDDDDDDDDD........",
+"..........DDDDDDDDDDDD..........",
+"................................",
+"................................",
+"................................"]};
+
 const blinkOf = art => art.map(r=>r.replace(/E/g,"B"));
 function petDefault(){ return {species:0,custom:null,tint:null,name:"团子",food:2,hunger:70,mood:70,lastOpen:todayStr(),bornAt:Date.now(),strokes:{}}; }
 function fixPet(p){
@@ -1003,11 +1062,16 @@ function fixPet(p){
   p.mood = Math.max(0, Math.min(100, p.mood));
   p.food = Math.max(0, Math.min(10, p.food|0));
   if (Array.isArray(p.custom) && p.custom.length === 16 && p.custom.every(r=>typeof r==="string" && r.length===16)){
-    /* 旧版 16×16 形象 → 居中放进 24×24，不丢像素 */
-    const E = ".".repeat(24), pad = r => "...."+r+"....";
+    /* 旧版 16×16 形象 → 居中放进 32×32，不丢像素 */
+    const E = ".".repeat(32), pad = r => "........"+r+"........";
+    p.custom = [E,E,E,E,E,E,E,E].concat(p.custom.map(pad), [E,E,E,E,E,E,E,E]);
+  }
+  if (Array.isArray(p.custom) && p.custom.length === 24 && p.custom.every(r=>typeof r==="string" && r.length===24 && /^[.BDWEPA]*$/.test(r))){
+    /* 24×24 形象 → 居中放进 32×32，不丢像素 */
+    const E = ".".repeat(32), pad = r => "...."+r+"....";
     p.custom = [E,E,E,E].concat(p.custom.map(pad), [E,E,E,E]);
   }
-  if (!Array.isArray(p.custom) || p.custom.length !== 24 || !p.custom.every(r=>typeof r==="string" && r.length===24 && /^[.BDWEPA]*$/.test(r))) p.custom = null;
+  if (!Array.isArray(p.custom) || p.custom.length !== 32 || !p.custom.every(r=>typeof r==="string" && r.length===32 && /^[.BDWEPA]*$/.test(r))) p.custom = null;
   if (typeof p.tint !== "string" || !/^#[0-9a-fA-F]{6}$/.test(p.tint)) p.tint = null;
   return p;
 }
@@ -1043,7 +1107,7 @@ function petState(){
 }
 function drawPet(cv, opt){
   const {art, pal} = petSource();
-  const blink = opt.blink, scale = cv.width/24;
+  const blink = opt.blink, scale = cv.width/32;
   const g = cv.getContext("2d");
   g.clearRect(0,0,cv.width,cv.height);
   g.fillStyle = "#3a3128";
@@ -1155,7 +1219,7 @@ function renderPet(){
       const c = document.createElement("canvas"); c.width = 96; c.height = 96;
       const g = c.getContext("2d");
       p.art.forEach((row,y)=>[...row].forEach((ch,x)=>{
-        if (ch!=="."){ g.fillStyle = p.pal[ch]; g.fillRect(x*4,y*4,4,4); }
+        if (ch!=="."){ g.fillStyle = p.pal[ch]; g.fillRect(x*3,y*3,3,3); }
       }));
       const b = document.createElement("button");
       b.className = "petopt"; b.dataset.pi = i;
@@ -1229,14 +1293,14 @@ function openPetEditor(){
   let ch = "B";
   const pal = petPal();
   const colors = {B:pal.B, D:pal.D, W:pal.W, E:pal.E, P:pal.P, A:pal.A};
-  openModal(`<h3>像素编辑器 · 24×24</h3>
+  openModal(`<h3>像素编辑器 · 32×32</h3>
     <div class="pxed" id="pxed"></div>
     <div class="pxpal" id="pxpal"></div>
     <p class="help" style="text-align:center;">点色板选颜色，按住拖动涂色；「橡皮」擦掉像素。</p>
     <div class="btnrow"><button class="btn sm" id="px-clear">清空</button><span style="flex:1;"></span><button class="btn sm" id="px-cancel">取消</button><button class="btn sm pri" id="px-save">保存形象</button></div>`);
   const grid = $("#pxed");
   const cells = [];
-  for (let y=0;y<24;y++) for (let x=0;x<24;x++){
+  for (let y=0;y<32;y++) for (let x=0;x<32;x++){
     const b = document.createElement("button");
     b.dataset.x = x; b.dataset.y = y;
     grid.appendChild(b); cells.push(b);
@@ -1277,7 +1341,7 @@ function openPetEditor(){
   });
   palBox.querySelector("button").classList.add("on");
   $("#px-cancel").onclick = closeModal;
-  $("#px-clear").onclick = ()=>{ for (let y=0;y<24;y++) for (let x=0;x<24;x++) rows[y][x]="."; sync(); };
+  $("#px-clear").onclick = ()=>{ for (let y=0;y<32;y++) for (let x=0;x<32;x++) rows[y][x]="."; sync(); };
   $("#px-save").onclick = ()=>{
     if (!rows.some(r=>r.some(c=>c!=="."))){ toast("画布是空的","至少画一个像素再保存",true); return; }
     db.pet.custom = rows.map(r=>r.join(""));
@@ -1302,8 +1366,17 @@ $("#pet-import").onclick = ()=>{
   $("#petimp-ok").onclick = ()=>{
     try{
       const d = JSON.parse($("#petimp").value);
-      if (!d || !Array.isArray(d.rows) || d.rows.length !== 24 || !d.rows.every(r=>typeof r==="string" && r.length===24 && /^[.BDWEPA]*$/.test(r))) throw 0;
-      db.pet.custom = d.rows;
+      let rows = d.rows;
+      if (Array.isArray(rows) && (rows.length === 16 || rows.length === 24)){
+        const n = rows.length;
+        if (rows.every(r=>typeof r==="string" && r.length===n && /^[.BDWEPA]*$/.test(r))){
+          /* 旧版 16/24 形象 → 居中放进 32×32 */
+          const side = ".".repeat((32-n)/2), E = ".".repeat(32);
+          rows = Array((32-n)/2).fill(E).concat(rows.map(r=>side+r+side), Array((32-n)/2).fill(E));
+        }
+      }
+      if (!Array.isArray(rows) || rows.length !== 32 || !rows.every(r=>typeof r==="string" && r.length===32 && /^[.BDWEPA]*$/.test(r))) throw 0;
+      db.pet.custom = rows;
       if (d.tint && /^#[0-9a-fA-F]{6}$/.test(d.tint)) db.pet.tint = d.tint;
       save(); closeModal(); renderPet();
       toast("形象导入成功","看看新伙伴！");
