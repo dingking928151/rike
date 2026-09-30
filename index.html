@@ -822,6 +822,19 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
         <div class="setrow" id="cat-edit" style="gap:10px;"></div>
         <p class="help">科目可增删（1–10 个）、点色块换颜色；删除科目时，它的日程和计时记录会并入最后一个科目。</p>
       </div>
+      <div class="card sect" style="margin-bottom:18px;">
+        <h3>AI 智能体</h3>
+        <div class="setrow">
+          <div class="lab"><b>本地智能体桥</b><span id="agent-state">未连接</span></div>
+          <span style="display:inline-flex;gap:6px;align-items:center;">
+            <input class="num" id="s-agentport" type="number" min="1024" max="65535" value="7676" aria-label="桥接端口">
+            <button class="btn sm" id="s-agentre">重连</button>
+          </span>
+        </div>
+        <p class="help" style="margin:4px 0 0;">让 Claude Code / kimi 这类 PC 端 AI 智能体读写你的日课：在 rike 仓库运行
+          <code>node agent/rike-mcp.js</code> 保持不动，另执行 <code>claude mcp add rike -- node agent/rike-mcp.js</code>；
+          然后对它说「看看我今天有什么安排」「帮我记 40 分钟专注」。本页开着时自动连接；桥只监听本机 127.0.0.1，数据不出这台电脑。</p>
+      </div>
       <div class="card sect">
         <h3>数据备份</h3>
         <p class="help" style="margin:0 0 10px;">所有数据只存在这个浏览器里。换设备或清缓存前，先复制下面的 JSON 保存；恢复时粘贴到导入框。</p>
@@ -944,6 +957,62 @@ function save(){
   }, 250);
 }
 db = load() || seed();
+
+/* ================= AI 智能体桥(本机 MCP, 只连 127.0.0.1) ================= */
+const AGENT = { port: db.settings.agentPort || 7676, ok: false, pend: [] };
+function agentApply(op){
+  try{
+    if (op.tool === "add_task"){
+      const t = parseLine(String(op.args.text || ""), todayStr());
+      if (!t) return "没看懂这一条: " + op.args.text;
+      purgeSample(); db.tasks.push(t); save();
+      renderToday(); renderCal(); updateNext();
+      toast("智能体添加了日程", (t.start || "随时") + " · " + t.title);
+      return "已添加: " + (t.start || "随时") + " " + t.title;
+    }
+    if (op.tool === "log_session"){
+      const min = Math.max(1, Math.min(600, Math.round(+op.args.minutes || 25)));
+      const sec = min * 60, now = Date.now();
+      purgeSample();
+      db.sessions.push({ id: uid(), cat: 0, subj: String(op.args.subject || "AI 记录").slice(0, 20), startTs: now - sec * 1000, endTs: now, sec, date: todayStr() });
+      petEarn(sec); save(); renderSessions(); renderToday();
+      toast("智能体补记了专注", fmtDur(sec));
+      return "已补记 " + min + " 分钟专注";
+    }
+    if (op.tool === "feed_pet"){
+      if (petStage() === 0) return "还是蛋, 不用喂";
+      if ((db.pet.food || 0) <= 0) return "存粮不足——多专注攒粮吧";
+      db.pet.food--; db.pet.hunger = Math.min(100, db.pet.hunger + 14); db.pet.mood = Math.min(100, db.pet.mood + 4);
+      petFx("🍚", 2); petSay("feed"); save(); renderPet();
+      return "已喂 1 颗存粮";
+    }
+    return "未知操作 " + op.tool;
+  }catch(e){ return "执行出错: " + e.message; }
+}
+async function agentSync(){
+  const body = { db, results: AGENT.pend };
+  AGENT.pend = [];
+  try{
+    const r = await fetch("http://127.0.0.1:" + AGENT.port + "/sync",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json();
+    (j.ops || []).forEach(op => AGENT.pend.push({ id: op.id, text: agentApply(op) }));
+    if (!AGENT.ok){ AGENT.ok = true; agentState(); }
+    if (AGENT.pend.length) agentSync();   /* 有回执立刻送 */
+  }catch(e){
+    if (AGENT.ok){ AGENT.ok = false; agentState(); }
+  }
+}
+function agentState(){
+  const el = $("#agent-state"); if (!el) return;
+  el.textContent = AGENT.ok
+    ? "已连接 · 127.0.0.1:" + AGENT.port + "（智能体可读写日课）"
+    : "未连接（本页开着时自动尝试连接本机智能体）";
+  el.style.color = AGENT.ok ? "var(--accent)" : "";
+}
+setInterval(agentSync, 2500);
+setTimeout(agentSync, 60);
+
 const cats = () => db.settings.cats;
 const colOf = i => db.settings.catCols?.[i] || CAT_POOL[i % CAT_POOL.length];
 
@@ -2610,6 +2679,8 @@ function renderSettings(){
   $("#s-goal").value = db.settings.goal;
   $("#s-miles").value = db.settings.miles || "";
   renderStyleSw();
+  $("#s-agentport").value = String(AGENT.port);
+  agentState();
   renderSw("#bg-sw", db.settings.bg, BG_PRESETS, "#F4F2EC", v=>{ db.settings.bg = v; save(); applyTheme(); });
   renderSw("#acc-sw", db.settings.acc, ACC_PRESETS, "#2F6D5F", v=>{ db.settings.acc = v; save(); applyTheme(); });
   $("#cat-edit").innerHTML = cats().map((c,i)=>
@@ -2649,6 +2720,12 @@ $("#s-w0").onchange = e=>{ db.settings.w0 = Math.max(1,Math.min(60,+e.target.val
 $("#s-w1").onchange = e=>{ db.settings.w1 = Math.max(+db.settings.w0,Math.min(99,+e.target.value||24)); e.target.value = db.settings.w1; save(); updatePlanInfo(); };
 $("#s-goal").onchange = e=>{ db.settings.goal = Math.max(1,Math.min(14,+e.target.value||4)); e.target.value = db.settings.goal; save(); renderToday(); };
 $("#s-miles").onchange = e=>{ db.settings.miles = e.target.value; save(); updatePlanInfo(); };
+$("#s-agentre").onclick = ()=>{
+  AGENT.port = Math.min(65535, Math.max(1024, +$("#s-agentport").value || 7676));
+  $("#s-agentport").value = String(AGENT.port);
+  db.settings.agentPort = AGENT.port; save();
+  AGENT.ok = false; agentState(); agentSync();
+};
 $("#cat-edit").addEventListener("change", e=>{
   const i = e.target.dataset.ci;
   if (i!=null){ db.settings.cats[+i] = e.target.value.trim() || ("科目"+(+i+1)); save(); renderAll(); }
