@@ -1,7 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>日课</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600&family=DotGothic16&display=swap">
 <style>
 /* ---------- tokens ---------- */
 :root{
@@ -86,15 +86,25 @@ body,.card,.sect{transition:background-color .45s ease,border-color .45s ease;}
 .stchip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600;}
 .stchip i{width:11px;height:11px;border-radius:3px;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
 /* 像素风: 直角 + 硬偏移阴影 + 厚描边, 动效走阶跃 */
-html[data-style="px"]{--r:0px;--shadow:3px 3px 0 rgba(36,41,44,.16);}
-@media(prefers-color-scheme:dark){html[data-style="px"]:not([data-theme="light"]){--shadow:4px 4px 0 rgba(0,0,0,.5);}}
-html[data-style="px"][data-theme="dark"]{--shadow:4px 4px 0 rgba(0,0,0,.5);}
+html[data-style="px"]{
+  --r:0px;--shadow:3px 3px 0 rgba(41,36,26,.22);
+  --card:#F6F0DE;--card2:#EFE7D0;--ink:#29241A;--ink2:#5D5644;--muted:#8D856E;
+  --hair:#CFC49F;--hair2:#E0D8BF;
+}
+@media(prefers-color-scheme:dark){html[data-style="px"]:not([data-theme="light"]){--shadow:4px 4px 0 rgba(0,0,0,.5);
+  --card:#242036;--card2:#2B2740;--ink:#ECE8F4;--ink2:#B1ABC8;--muted:#7C7695;
+  --hair:#3F3A58;--hair2:#322E4A;}}
+html[data-style="px"][data-theme="dark"]{--shadow:4px 4px 0 rgba(0,0,0,.5);
+  --card:#242036;--card2:#2B2740;--ink:#ECE8F4;--ink2:#B1ABC8;--muted:#7C7695;
+  --hair:#3F3A58;--hair2:#322E4A;}
 html[data-style="px"] :is(.card,.sect,.btn,.btn.sm,.iconbtn,.field input,.field select,.field textarea,.tin,.quickadd input,.trow,.trow .ck,.trow .pri,.wcell,.cell,.modetabs,.modetabs button,.phase,.tile,.num,.ta,.catnameinp,.switch,.toast,.banner,.chip,.catcol,.petbubble,.petname .stage,.stchip,.dot,.sw,.swcustom,.wdts i,.cell .dots i,.switch::after,.wcol .bar,.meter,.meter i,.catrow .track,.catrow .track i,#tip,.pri.p0,.pri.p1,.nowchip,.modal,.pxpal button,.stchip i,.navbtn.on::before){border-radius:0;}
 html[data-style="px"] :is(.card,.sect){border-width:2px;}
 html[data-style="px"] .side{border-right-width:2px;}
 html[data-style="px"] .trow .ck{border-width:2px;}
-html[data-style="px"] .btn,html[data-style="px"] .stchip{box-shadow:2px 2px 0 rgba(36,41,44,.18);}
-html[data-style="px"] .btn.pri{box-shadow:2px 2px 0 rgba(36,41,44,.3);}
+html[data-style="px"] .btn,html[data-style="px"] .stchip{box-shadow:inset 2px 2px 0 rgba(255,255,255,.55),inset -2px -2px 0 rgba(41,36,26,.22),2px 2px 0 rgba(41,36,26,.2);}
+html[data-style="px"] .btn.pri{box-shadow:inset 2px 2px 0 rgba(255,255,255,.28),inset -2px -2px 0 rgba(0,0,0,.28),2px 2px 0 rgba(41,36,26,.28);}
+@media(prefers-color-scheme:dark){html[data-style="px"]:not([data-theme="light"]) .btn{box-shadow:inset 2px 2px 0 rgba(255,255,255,.1),inset -2px -2px 0 rgba(0,0,0,.42),2px 2px 0 rgba(0,0,0,.4);}}
+html[data-style="px"][data-theme="dark"] .btn{box-shadow:inset 2px 2px 0 rgba(255,255,255,.1),inset -2px -2px 0 rgba(0,0,0,.42),2px 2px 0 rgba(0,0,0,.4);}
 html[data-style="px"] .btn:active,html[data-style="px"] .stchip:active{transform:translate(2px,2px);box-shadow:none;}
 html[data-style="px"] .tabbar{background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none;border-top:2px solid var(--ink);}
 html[data-style="px"] .readout{font-family:"IBM Plex Mono",monospace;font-weight:600;}
@@ -102,6 +112,22 @@ html[data-style="px"] .view-head h2{text-shadow:2px 2px 0 var(--accent-soft);let
 html[data-style="px"] .v-anim{animation-timing-function:steps(5,end);}
 html[data-style="px"] .v-anim>*{animation-timing-function:steps(5,end);}
 html[data-style="px"] .toast{animation-timing-function:steps(4,end);}
+/* 像素标题字(可达则用 DotGothic16, 不可达回退系统黑体) */
+html[data-style="px"] .serif,
+html[data-style="px"] :is(.brand h1,.view-head h2,.sect h3,.calhead h3,.clockbox .t,.tile .v){
+  font-family:"DotGothic16","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+}
+html[data-style="px"] .view-head h2{font-weight:400;}
+/* CRT 扫描线: 全屏极淡横纹, 深色更明显 */
+html[data-style="px"] body::after{content:"";position:fixed;inset:0;z-index:9990;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(31,26,14,.05) 0 1px,transparent 1px 3px);}
+@media(prefers-color-scheme:dark){html[data-style="px"]:not([data-theme="light"]) body::after{background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px);}}
+html[data-style="px"][data-theme="dark"] body::after{background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px);}
+/* 小窝: 棋盘格地砖 */
+html[data-style="px"] .petstage{border-radius:0;border:2px solid var(--hair);background:repeating-conic-gradient(var(--card2) 0 25%,var(--card) 0 50%) 0 0/28px 28px;}
+/* 细节: 虚线分隔/方角焦点/选区 */
+html[data-style="px"] .setrow{border-bottom:2px dotted var(--hair);}
+html[data-style="px"] :focus-visible{border-radius:0;}
+html[data-style="px"] ::selection{background:var(--accent-soft);}
 /* 墨纸: 宣纸底 + 墨字 + 朱砂, 页题下一笔朱砂 */
 html[data-style="mo"]{--card:#FBF8EF;--card2:#F3EEE0;--ink:#211E1A;--ink2:#57534B;--muted:#8B8578;--hair:#DCD5C2;--hair2:#E8E2D1;}
 @media(prefers-color-scheme:dark){html[data-style="mo"]:not([data-theme="light"]){--card:#201E19;--card2:#28251F;--ink:#EDE7DA;--ink2:#B5AD9C;--muted:#7E786A;--hair:#3B372E;--hair2:#2F2C25;}}
@@ -114,6 +140,63 @@ html[data-style="mo"] .chip{border-radius:3px;}
 html[data-style="mo"] .trow .ck{border-radius:4px;}
 html[data-style="mo"] .meter{border-radius:2px;}
 html[data-style="mo"] .meter i{border-radius:1px;}
+/* 灵动(Apple 风): 磨砂玻璃 + 环境光渐变 + 胶囊控件 + 弹簧曲线 */
+html[data-style="ap"]{
+  --r:20px;--shadow:0 18px 44px rgba(16,17,23,.10);
+  --card:rgba(255,255,255,.64);--card2:rgba(255,255,255,.42);
+  --ink:#1D1D1F;--ink2:#515154;--muted:#86868B;
+  --hair:rgba(10,12,20,.10);--hair2:rgba(10,12,20,.06);
+}
+@media(prefers-color-scheme:dark){html[data-style="ap"]:not([data-theme="light"]){--shadow:0 20px 60px rgba(0,0,0,.55);
+  --card:rgba(30,30,36,.60);--card2:rgba(48,48,54,.42);
+  --ink:#F5F5F7;--ink2:#C7C7CC;--muted:#8E8E93;
+  --hair:rgba(255,255,255,.13);--hair2:rgba(255,255,255,.07);}}
+html[data-style="ap"][data-theme="dark"]{--shadow:0 20px 60px rgba(0,0,0,.55);
+  --card:rgba(30,30,36,.60);--card2:rgba(48,48,54,.42);
+  --ink:#F5F5F7;--ink2:#C7C7CC;--muted:#8E8E93;
+  --hair:rgba(255,255,255,.13);--hair2:rgba(255,255,255,.07);}
+/* 环境光: 强调色在画面上下晕开, 玻璃才有东西可透 */
+html[data-style="ap"] body{
+  background:radial-gradient(1100px 560px at 6% -12%,color-mix(in srgb,var(--accent) 17%,transparent),transparent 62%),
+             radial-gradient(940px 520px at 104% 6%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 58%),
+             radial-gradient(880px 560px at 50% 118%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 62%),
+             var(--bg);
+  background-attachment:fixed;
+}
+/* 玻璃材质 */
+html[data-style="ap"] :is(.card,.sect){backdrop-filter:blur(22px) saturate(170%);-webkit-backdrop-filter:blur(22px) saturate(170%);}
+html[data-style="ap"] .side{backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);}
+html[data-style="ap"] .modal{backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);}
+html[data-style="ap"] .toast{backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);}
+html[data-style="ap"] :is(.quickadd input,.field input,.field select){backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+html[data-style="ap"] .cell{background:var(--card2);}
+/* 胶囊控件 + 大圆角 */
+html[data-style="ap"] :is(.btn,.quickadd input,.field input,.field select,.num,.tin,.catnameinp,.modetabs){border-radius:99px;}
+html[data-style="ap"] .modetabs button{border-radius:99px;}
+html[data-style="ap"] :is(.trow,.cell,.toast,.petbubble){border-radius:16px;}
+html[data-style="ap"] .trow .ck{border-radius:7px;}
+/* 排版: 去衬线、负字距、重标题 */
+html[data-style="ap"] .serif{font-family:inherit;}
+html[data-style="ap"] :is(.view-head h2,.brand h1){letter-spacing:-.02em;font-weight:700;}
+/* 弹簧感入场(阻尼≈1 无回弹) + 更从容的错峰 */
+html[data-style="ap"] .v-anim,html[data-style="ap"] .v-anim>*{animation-duration:.55s;animation-timing-function:cubic-bezier(.32,.72,0,1);}
+html[data-style="ap"] .v-anim>*:nth-child(2){animation-delay:70ms}
+html[data-style="ap"] .v-anim>*:nth-child(3){animation-delay:140ms}
+html[data-style="ap"] .v-anim>*:nth-child(4){animation-delay:210ms}
+html[data-style="ap"] .v-anim>*:nth-child(5){animation-delay:280ms}
+html[data-style="ap"] .v-anim>*:nth-child(n+6){animation-delay:340ms}
+/* 主按钮光晕 + 悬浮微升(补按压缩回, 防悬停态盖过按压态) */
+html[data-style="ap"] .btn.pri{box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 36%,transparent);}
+html[data-style="ap"] :is(.btn,.navbtn):hover{transform:translateY(-1px);}
+html[data-style="ap"] :is(.btn,.navbtn):active{transform:scale(.96);}
+/* "减少透明度"时玻璃退回实色 */
+@media(prefers-reduced-transparency:reduce){
+  html[data-style="ap"]{--card:#FBFBFD;--card2:#F2F2F7;}
+  html[data-style="ap"][data-theme="dark"]{--card:#1C1C1E;--card2:#2C2C2E;}
+  @media(prefers-color-scheme:dark){html[data-style="ap"]:not([data-theme="light"]){--card:#1C1C1E;--card2:#2C2C2E;}}
+  html[data-style="ap"] :is(.card,.sect,.side,.modal,.toast,.quickadd input,.field input,.field select){backdrop-filter:none;-webkit-backdrop-filter:none;}
+  html[data-style="ap"] body{background:var(--bg);}
+}
 /* ---------- shell ---------- */
 .app{display:grid;grid-template-columns:222px 1fr;min-height:100%;}
 .side{
@@ -2464,13 +2547,20 @@ function applyTheme(){
   let css = "";
   const style = db.settings.style || "jz";
   document.documentElement.dataset.style = style;
-  if (style === "mo" && !db.settings.bg){ /* 宣纸底, 用户自定义色优先 */
-    css += ':root{--bg:#F3EDE0}@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161410}} :root[data-theme="dark"]{--bg:#161410}';
+  /* 各风格默认底色/强调色, 用户自定义优先 */
+  const SKINS = {
+    mo:{bg:["#F3EDE0","#161410"], acc:{l:["#B03A2E","#FBF6EC","#F1E0D8","#D98A7C"], d:["#C9553F","#190D0A","#2E1B15","#5A2E22"]}},
+    px:{bg:["#E9E2CF","#191624"], acc:{l:["#6D5BA8","#F5F2FB","#E6E0F4","#B4A9D9"], d:["#9F8CE8","#171224","#2C2745","#4C4470"]}},
+    ap:{bg:["#F5F5F7","#0B0B0D"], acc:{l:["#0071E3","#FFFFFF","#E5F1FD","#A9CEF7"], d:["#2997FF","#FFFFFF","#12233D","#2E5F8F"]}}
+  };
+  const sk = SKINS[style];
+  if (sk && !db.settings.bg){
+    css += ':root{--bg:' + sk.bg[0] + '}@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:' + sk.bg[1] + '}} :root[data-theme="dark"]{--bg:' + sk.bg[1] + '}';
   }
-  if (style === "mo" && !db.settings.acc){
-    css += ':root{--accent:#B03A2E;--accent-ink:#FBF6EC;--accent-soft:#F1E0D8;--accent-line:#D98A7C}'
-      + '@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--accent:#C9553F;--accent-ink:#190D0A;--accent-soft:#2E1B15;--accent-line:#5A2E22}}'
-      + ':root[data-theme="dark"]{--accent:#C9553F;--accent-ink:#190D0A;--accent-soft:#2E1B15;--accent-line:#5A2E22}';
+  if (sk && !db.settings.acc){
+    css += ':root{--accent:' + sk.acc.l[0] + ';--accent-ink:' + sk.acc.l[1] + ';--accent-soft:' + sk.acc.l[2] + ';--accent-line:' + sk.acc.l[3] + '}'
+      + '@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--accent:' + sk.acc.d[0] + ';--accent-ink:' + sk.acc.d[1] + ';--accent-soft:' + sk.acc.d[2] + ';--accent-line:' + sk.acc.d[3] + '}}'
+      + ':root[data-theme="dark"]{--accent:' + sk.acc.d[0] + ';--accent-ink:' + sk.acc.d[1] + ';--accent-soft:' + sk.acc.d[2] + ';--accent-line:' + sk.acc.d[3] + '}';
   }
   if (db.settings.bg){
     const c = hexToHsl(db.settings.bg) || [40,.12];
@@ -2489,7 +2579,7 @@ function applyTheme(){
 }
 
 /* ================= 设置 ================= */
-const STYLE_DEFS = [["jz","极简"],["px","像素"],["mo","墨纸"]];
+const STYLE_DEFS = [["jz","极简"],["px","像素"],["mo","墨纸"],["ap","灵动"]];
 function renderStyleSw(){
   const cur = db.settings.style || "jz";
   const box = $("#style-sw");
