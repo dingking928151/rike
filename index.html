@@ -759,6 +759,16 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
         <div class="sub">提醒 · 番茄钟 · 科目 · 数据</div>
       </div>
       <div class="card sect" style="margin-bottom:18px;">
+        <h3>语言 / Language</h3>
+        <div class="setrow">
+          <div class="lab"><b>界面语言 / UI language</b><span>切换后页面会自动刷新 / The page reloads to apply</span></div>
+          <select class="seg" id="s-lang" aria-label="界面语言 / UI language">
+            <option value="zh">简体中文</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
+      <div class="card sect" style="margin-bottom:18px;">
         <h3>学习提醒</h3>
         <div class="setrow">
           <div class="lab"><b>提前提醒</b><span>日程开始前多少分钟在页面内弹出提醒</span></div>
@@ -901,11 +911,330 @@ const hm = s => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(s||"").trim()); re
 const minsOf = s => { const t = hm(s); return t ? t.h*60+t.m : null; };
 const nowMin = () => { const n = new Date(); return n.getHours()*60+n.getMinutes(); };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const CN_WD = ["日","一","二","三","四","五","六"];
-function fmtDate(s){ const d = parseD(s); return `${d.getMonth()+1}月${d.getDate()}日 星期${CN_WD[d.getDay()]}`; }
+/* ================= 多语言(简中默认 / English) =================
+ * T(s): 整句查词典, 查不到回退原文(zh 模式零开销)
+ * TF(s,{k:v}): 词典值里带 {k} 占位符的模板
+ * 静态 HTML 不改源码——en 模式启动时 walker 按整句匹配替换; 切语言=存库+刷新页面 */
+let LANG = "zh";
+const I18N = { en: {
+  /* ---- 静态页文本/属性(walker 用) ---- */
+  "日程 · 计时 · 日历": "Tasks · Timer · Calendar",
+  "快速添加日程": "Quick-add a task",
+  "速记：19:00-20:30 GCN论文精读 #算法CSP !高 @每周 （回车添加）": "Quick: 19:00-20:30 GCN paper #math !high @daily  (Enter to add)",
+  "详细": "Details",
+  "今日": "Today",
+  "科目": "Subject",
+  "在做什么": "What are you doing",
+  "例如：数学分析 第4章习题": "e.g. Calculus ch.4 exercises",
+  "记一笔": "Log",
+  "手动补记": "Log manually",
+  "选科目，填起止时间": "Pick a subject and start/end times",
+  "开始": "Start",
+  "结束": "End",
+  "计时": "Timer",
+  "自由计时": "Free timer",
+  "番茄钟": "Pomodoro",
+  "休息时长": "Break length",
+  "每轮之间的分钟数": "Minutes between rounds",
+  "每轮学习的分钟数": "Focus minutes per round",
+  "25 分": "25 m", "40 分 · CSP": "40 m · CSP", "50 分": "50 m",
+  "第 1 轮": "Round 1",
+  "今天的时间记录": "Today's time log",
+  "日历": "Calendar",
+  "上个月": "Previous month", "下个月": "Next month",
+  "回到今天": "Back to today",
+  "统计": "Stats",
+  "本周每日时长": "Daily hours this week",
+  "本周科目分布": "Subjects this week",
+  "本周还没有记录": "Nothing logged this week yet",
+  "小窝": "Pet den",
+  "专注喂养 · 陪伴养成": "Feed by focusing · Grow together",
+  "饱食度": "Fullness",
+  "心情": "Mood",
+  "喂食": "Feeding",
+  "饭盒存粮": "Kibble stock",
+  "喂一颗": "Feed one",
+  "挨饿退化": "Starve regression",
+  "断粮挨饿满几天退回上一阶段，最低回到蛋": "Days starved before regressing a stage, egg at the lowest",
+  "不退化": "Never", "2 天": "2 days", "3 天": "3 days", "5 天": "5 days", "7 天": "7 days",
+  "挨饿退化天数": "Starve regression days",
+  "每专注 25 分钟自动得一颗粮（上限 10 颗），喂一颗恢复 14 点饱食度。它每天自己吃一颗存粮维持饱食——断粮后饱食见底、开始挨饿，攒满设定天数就退回上一阶段（蛋休眠不消耗，永远不会消失）。": "Every 25 minutes of focus earns one kibble (max 10); feeding one restores 14 fullness. It eats one kibble a day by itself — run out and its fullness drains; once it has starved for the set number of days it regresses a stage (the egg sleeps and consumes nothing; it never disappears).",
+  "宠物": "Pet",
+  "主体颜色": "Body color",
+  "把宠物染成你喜欢的颜色": "Dye the pet any color you like",
+  "默认": "Default",
+  "像素编辑器": "Pixel editor",
+  "导出形象": "Export look",
+  "导入形象": "Import look",
+  "自定义形象保存在本地浏览器；「导出形象」生成一串代码，发给朋友就能分享你的宠物。": "Custom looks live in this browser; “Export look” gives a code you can share with friends.",
+  "设置": "Settings",
+  "提醒 · 番茄钟 · 科目 · 数据": "Reminders · Pomodoro · Subjects · Data",
+  "学习提醒": "Task reminders",
+  "提前提醒": "Remind ahead",
+  "日程开始前多少分钟在页面内弹出提醒": "Minutes before a task starts to pop an in-page reminder",
+  "准点": "On time", "提前 5 分钟": "5 min early", "提前 10 分钟": "10 min early", "提前 15 分钟": "15 min early", "提前 30 分钟": "30 min early",
+  "提示音": "Sound",
+  "提醒到达时播放两声短音": "Two short beeps when a reminder fires",
+  "震动反馈": "Haptics",
+  "打勾、喂宠物、完成番茄钟时轻震一下（部分手机支持）": "A light buzz on check, feed and pomodoro finish (supported phones only)",
+  "浏览器通知": "Browser notifications",
+  "页面不在前台时也能收到系统通知": "System notifications even when the tab is in the background",
+  "宠物动效": "Pet animation",
+  "小窝的伙伴会呼吸起伏、摆尾抖耳；关闭后保持静止": "Your buddy breathes, wags and flicks its ears; off keeps it still",
+  "番茄钟时长": "Pomodoro length",
+  "专注时长": "Focus length",
+  "外观": "Appearance",
+  "主题风格": "Theme style",
+  "整套界面的视觉风格；下面两行颜色可以继续微调": "The overall look; fine-tune with the two colors below",
+  "纸色背景": "Paper background",
+  "整页底色；深色模式自动配同色系暗色": "Page-wide ground; dark mode derives a matching dark shade",
+  "强调色": "Accent color",
+  "按钮、进度条、进行中标记的颜色": "Buttons, meters and in-progress highlights",
+  "科目管理": "Subjects",
+  "科目可增删（1–10 个）、点色块换颜色；删除科目时，它的日程和计时记录会并入最后一个科目。": "Add/remove subjects (1–10), click a swatch to recolor; deleting one moves its tasks and records to the last subject.",
+  "学习计划": "Study plan",
+  "计划锚点": "Anchor date",
+  "锚点那天是你计划「起始周」的第一天，侧栏据此显示第几周": "That day is the first day of your “start week”; the sidebar counts weeks from it",
+  "周号范围": "Week range",
+  "起始周到结束周，用于计算「距收官」倒计时": "Start-to-end weeks, used for the “days to finish” countdown",
+  "每日目标": "Daily goal",
+  "小时/天，今日页按此画目标进度条": "hours/day; today's page draws the goal meter from it",
+  "里程碑": "Milestones",
+  "每行一条「日期 事项」，最近的两条会显示在侧栏倒计时": "One “date item” per line; the two nearest show in the sidebar countdown",
+  "AI 智能体": "AI agent",
+  "本地智能体桥": "Local agent bridge",
+  "桥接端口": "Bridge port",
+  "重连": "Reconnect",
+  "未连接": "Not connected",
+  "让 Claude Code / kimi 这类 PC 端 AI 智能体读写你的日课：在 rike 仓库运行": "Let desktop AI agents like Claude Code / kimi read & write your rike — run, inside the rike repo,",
+  "， 手机浏览器打开控制台里打印的地址，输入 6 位配对码即成——手机和电脑用同一份数据，手机上加的日程电脑立刻可见。": ", then open the printed address in a phone browser and enter the 6-digit pairing code — phone and PC share one dataset; tasks added on the phone show up on the PC instantly.",
+  "； 然后对它说「看看我今天有什么安排」「帮我记 40 分钟专注」。本页开着时自动连接；桥只监听本机 127.0.0.1，数据不出这台电脑。": ", then ask it “what's on today” or “log 40 minutes of focus”. This page auto-connects while open; the bridge only listens on 127.0.0.1 — data never leaves this machine.",
+  "手机联动：改为运行": "Phone sync: run",
+  "数据备份": "Data backup",
+  "数据保存在此浏览器": "Data lives in this browser",
+  "所有数据只存在这个浏览器里。换设备或清缓存前，先复制下面的 JSON 保存；恢复时粘贴到导入框。": "All data lives only in this browser. Before switching devices or clearing cache, copy the JSON below; to restore, paste it into the import box.",
+  "可在设置中备份 / 恢复": "Back up / restore in Settings",
+  "导出数据": "Export data",
+  "复制 JSON": "Copy JSON",
+  "刷新": "Refresh",
+  "导入数据": "Import data",
+  "把之前备份的 JSON 粘贴到这里，然后点「导入并覆盖」": "Paste a previously backed-up JSON here, then “Import & overwrite”",
+  "导入并覆盖": "Import & overwrite",
+  "清空全部数据": "Clear all data",
+  "示例数据": "sample data",
+  "当前展示的是": "Currently showing",
+  "，添加你自己的第一条日程后会自动替换": " — it's replaced once you add your own first task",
+  "立即清空": "Clear now",
+  "去小窝看看": "Visit the den",
+  "摸摸宠物": "Pet the buddy",
+  "改名": "Rename",
+  "保持不动，另执行": "Keep still and run",
+  "浏览器存储不可用，本次修改刷新后会丢失——记得用「设置 → 数据备份」保存": "Browser storage unavailable — changes will be lost on reload. Back up in Settings → Data backup",
+  "语言 / Language": "Language",
+  "界面语言 / UI language": "Interface language",
+  "切换后页面会自动刷新 / The page reloads to apply": "切换后页面会自动刷新 / The page reloads to apply",
+  "CSP 真题限时": "CSP timed set",
+  /* ---- JS 动态输出 ---- */
+  "已连接 · 智能体 + 局域网联动中": "Connected · agent + LAN sync",
+  "已连接 · 127.0.0.1:": "Connected · 127.0.0.1:",
+  "（智能体可读写日课）": " (agent can read/write rike)",
+  "已连接 · 局域网联动中（手机与电脑同一份数据）": "Connected · LAN sync (phone & PC share one dataset)",
+  "未连接（本页开着时自动尝试连接本机智能体）": "Not connected (auto-tries the local agent while this page is open)",
+  "已同步": "Synced", "收到了其他设备的更新": "Received updates from another device",
+  "连接这台电脑": "Connect to this computer",
+  "输入电脑上 rike 桥打印的 6 位配对码": "Enter the 6-digit code printed by the rike bridge on your computer",
+  "连接": "Connect", "取消": "Cancel",
+  "配对失败": "Pairing failed", "核对电脑控制台里的 6 位配对码": "Check the 6-digit code in the console on your computer",
+  "橘猫": "Orange cat", "柴犬": "Shiba", "兔子": "Rabbit", "小鸡": "Chick", "青蛙": "Frog", "熊猫": "Panda",
+  "蛋里的小家伙在等你的专注声——成长 {g}，还差 {l} 孵化": "The little one in the egg waits for your focus — {g} grown, {l} more to hatch",
+  " · 成长 {g}h / 20h": " · growth {g}h / 20h",
+  " · 已挨饿 {n} 天": " · starving {n} days",
+  "，再 {n} 天要退化！": " — regresses in {n} more days!",
+  "它今天很有精神，陪它坐一会儿吧": "Full of energy today — sit with it a while",
+  "肚子有点饿了——喂一颗存粮吧": "A bit hungry — feed it a kibble",
+  "有点想你了，点点它陪陪它": "Missing you — give it a tap",
+  "睡着了……喂一口存粮，它会醒过来的": "Asleep… a kibble will wake it up",
+  "今天也要一起加油呀！": "Let's do our best today too!",
+  "学累了就来摸摸我~": "Pet me on your study breaks~",
+  "我刚睡醒，精神满满！": "Just woke up, feeling great!",
+  "陪你写到收官那一天！": "I'll study with you to the finish line!",
+  "嘿嘿，摸起来舒服吧？": "Hehe, soft, isn't it?",
+  "咕噜噜……饭盒是空的吗？": "Grrumble… is the food box empty?",
+  "好想吃一颗粮啊……": "I'd love a kibble…",
+  "闻到粮的味道了吗？": "Do you smell kibble anywhere?",
+  "肚子在唱歌了……": "My tummy is singing…",
+  "陪陪我嘛……": "Stay with me a little…",
+  "最近好忙呀，我一直在等你": "You've been so busy — I've been waiting",
+  "点我一下，我就开心了": "One little tap and I'm happy",
+  "别忘了我哦": "Don't forget me, okay?",
+  "Zzz……呼……Zzz……": "Zzz… hmm… Zzz…",
+  "（它睡得香香的）": "(It's sleeping soundly)",
+  "（梦里也在等你）": "(Dreaming of you)",
+  "（蛋壳里传来轻轻的动静）": "(Something stirs gently inside the egg)",
+  "（快了快了，马上孵出来！）": "(Soon, soon — almost hatching!)",
+  "（蛋：多学一会儿，我就能出来啦）": "(Egg: a bit more focus and I can come out!)",
+  "谢谢投喂！": "Thanks for feeding me!",
+  "嗷呜，好吃！": "Nom nom, tasty!",
+  "满血复活！": "Fully recharged!",
+  "你就是最好的投喂官！": "You're the best feeder ever!",
+  "（饿得缩了一圈……）": "(Shrank a size from hunger…)",
+  "（毛色都黯淡了……）": "(Its fur looks dull…)",
+  "（它委屈地抱住了自己）": "(It hugs itself, feeling wronged)",
+  "（饿过头的它变小了一圈）": "(Too hungry — it got smaller)",
+  "嘿嘿~": "Hehe~",
+  "再摸一下嘛！": "One more pat, please!",
+  "最喜欢你啦！": "I like you the most!",
+  "（蹭了蹭你的手）": "(Nuzzles your hand)",
+  "（开心地眯起了眼）": "(Happily narrows its eyes)",
+  "存粮 +{n}": "Kibble +{n}",
+  "{name} 的饭盒更满了": "{name}'s food box is fuller",
+  "{name} 挨饿太久了": "{name} starved too long",
+  "退回了{stage}……给它补点存粮吧": "Regressed to {stage}… stock up its kibble",
+  "蛋": "Egg", "幼年": "Juvenile", "成年": "Adult", " · 自定义": " · custom",
+  "{n} / 10 颗": "{n} / 10",
+  "无名小家伙": "Little one", "小家伙": "little buddy",
+  "精神不错": "Doing great", "有点饿": "A bit hungry", "想你了": "Misses you", "睡着了": "Asleep",
+  "蛋还不需要吃东西": "The egg doesn't eat yet",
+  "先攒专注让它孵出来": "Focus more and hatch it first",
+  "吃饱啦": "Full and happy", "它满足地眯起了眼": "It contentedly narrows its eyes",
+  "给小家伙起名": "Name your buddy",
+  "名字（最多 8 个字）": "Name (up to 8 characters)",
+  "保存": "Save",
+  "像素编辑器 · 32×32": "Pixel editor · 32×32",
+  "点色板选颜色，按住拖动涂色；「橡皮」擦掉像素。": "Pick a color and drag to paint; “Eraser” removes pixels.",
+  "清空": "Clear",
+  "身体": "Body", "深色": "Dark", "白": "White", "眼睛": "Eyes", "粉色": "Pink", "强调": "Accent", "橡皮": "Eraser",
+  "画布是空的": "The canvas is empty", "至少画一个像素再保存": "Paint at least one pixel first",
+  "形象已保存": "New look saved", "它换上了你画的样子": "It's wearing your artwork now",
+  "粘贴别人分享的形象代码": "Paste a look code someone shared",
+  "导入": "Import", "关闭": "Close", "复制": "Copy",
+  "形象导入成功": "Look imported", "看看新伙伴！": "Meet the new buddy!",
+  "导入失败": "Import failed", "代码不是有效的日课形象": "That code isn't a valid rike pet look",
+  "第 {d}/7 天": "day {d}/7",
+  " · 距收官 {n} 天": " · {n} days to the finish",
+  "{n} 天": "{n} days",
+  "完成 {d}/{n} · 已记录 {t}": "Done {d}/{n} · Logged {t}",
+  "今天还没有安排": "Nothing scheduled today",
+  "上午": "Morning", "下午": "Afternoon", "晚上": "Evening",
+  "{n} 项": "{n} items",
+  "随时": "anytime",
+  "高": "High", "中": "Med", "低": "Low",
+  "每天": "Daily", "每周": "Weekly",
+  "进行中": "In progress", "已过期": "Overdue",
+  "完成": "Done", "编辑": "Edit", "删除": "Delete",
+  "今天还没有日程——在上面输入框速记一条，或点「详细」": "Nothing scheduled today — quick-add above, or tap “Details”",
+  "已记录专注": "Focused today",
+  "今日目标 {n} 小时": "Today's goal {n} h",
+  "今日计划时长": "Planned today",
+  "待完成": "To do",
+  "下一项 · {t}": "Next · {t}",
+  "计时进行中": "Timer running",
+  "本周 · W{n}": "This week · W{n}",
+  "完成率": "Completion",
+  "没看懂这一条": "Couldn't parse that",
+  "试试「19:00-20:30 数学分析 #数学 !高」": "Try “19:00-20:30 Calculus #math !high”",
+  "已添加": "Added",
+  "编辑日程": "Edit task", "新建日程": "New task",
+  "标题": "Title", "日期": "Date",
+  "开始": "Start", "结束（可空）": "End (optional)",
+  "优先级": "Priority", "重复": "Repeat",
+  "不重复": "Never", "每周这天": "Weekly (this weekday)",
+  "{y}年{m}月": "{m} {y}",
+  "本月 {n} 项日程 · 完成 {d} · 计划 {t}": "{n} tasks this month · {d} done · {t} planned",
+  " · 今天": " · Today",
+  "{t} 专注": "{t} focused",
+  "导入 MD": "Import MD", "导出 MD": "Export MD", "加日程": "Add task",
+  "这一天还没有日程": "Nothing scheduled this day",
+  "已复制": "Copied", "复制失败": "Copy failed", "请手动全选复制": "Select and copy manually",
+  "已导入 {n} 条": "Imported {n} items",
+  "每行一条：<code>时间</code> 可写 <code>19:00-20:30</code> 或只写开始时间；<code>#科目</code> 选分类；<code>!高/!中/!低</code> 设优先级；<code>@每天/@每周</code> 设重复；<code>[x]</code> 表示已完成。粘贴 Obsidian 每日笔记「✅ Tasks」下的清单原样可导。": "One item per line: <code>time</code> as <code>19:00-20:30</code> or start only; <code>#subject</code> picks a category; <code>!high/!med/!low</code> sets priority; <code>@daily/@weekly</code> sets repeat; <code>[x]</code> marks done. An Obsidian daily note's “✅ Tasks” list pastes in as-is.",
+  "- 08:30-10:00 数学分析习题 #数学 !高&#10;- [x] 07:30 晨跑 #其他&#10;- 背单词 #英语": "- 08:30-10:00 Calculus exercises #math !high&#10;- [x] 07:30 Morning run #other&#10;- Vocabulary #english",
+  "先结束或暂停当前计时再切换模式": "Finish or pause the timer before switching modes",
+  "先结束当前计时再改时长": "Finish the timer before changing its length",
+  "专注时长已设": "Focus length set",
+  "{n} 分钟": "{n} min", " · CSP 模式": " · CSP mode",
+  "继续": "Resume", "暂停": "Pause",
+  "今天已记录 {t}": "Logged {t} today",
+  "学习": "Focus", "休息": "Break",
+  "第 {n} 轮": "Round {n}",
+  "本段还剩 {t}": "{t} left in this block",
+  "番茄钟开始": "Pomodoro started", "专注 {n} 分钟，加油": "Focus for {n} min — go!",
+  "番茄钟专注完成": "Pomodoro focus complete", "已记录": "Logged",
+  "番茄钟：专注完成": "Pomodoro: focus done", "休息 {n} 分钟": "Break {n} min",
+  "专注完成，休息一下": "Focus done — take a break",
+  "第 {n} 轮 · 已记录 {m} 分钟": "Round {n} · {m} min logged",
+  "番茄钟：休息结束": "Pomodoro: break over", "开始第 {n} 轮专注": "Starting focus round {n}",
+  "休息结束": "Break over",
+  "时间不对": "Invalid time", "结束时间要晚于开始时间": "End must be after start",
+  "已补记": "Logged manually",
+  "今天还没有记录——点左侧开始计时，或在下面补记": "No records yet — start the timer, or log one below",
+  "专注": "Focus", "科目{n}": "Subject {n}",
+  "本周总时长": "Total this week", "日均": "Daily avg", "连续打卡": "Streak", "本周完成": "Done this week",
+  "小时": "hours", "小时/天": "h/day", "天": "days", "项": "tasks",
+  "周{d} · {t}": "{d} · {t}",
+  "接下来": "Up next ", "今天没有更多安排": "Nothing more today", "好好休息": "Take a good rest",
+  "学习提醒": "Task reminder",
+  "提前 {a} 分钟提醒，还有 {m} 分钟开始": "{a} min early — starts in {m} min",
+  "自定义颜色": "Custom color",
+  "极简": "Minimal", "像素": "Pixel", "墨纸": "Ink", "灵动": "Fluid",
+  "＋ 添加科目": "＋ Add subject", "删除科目{n}": "Delete subject {n}",
+  "此环境不支持通知": "Notifications unsupported here", "页面内提醒仍然有效": "In-page reminders still work",
+  "通知已开启": "Notifications on", "页面不在前台时也会提醒": "Reminders arrive even in the background",
+  "没有获得权限": "Permission denied", "浏览器地址栏的通知权限里允许即可": "Allow notifications from the browser address bar",
+  "至少保留一个科目": "Keep at least one subject",
+  "已删除科目": "Subject deleted", "相关记录已并入「{c}」": "Its records moved to “{c}”",
+  "科目最多 10 个": "Up to 10 subjects", "新科目": "New subject",
+  "已刷新": "Refreshed", "内容不是有效的日课备份 JSON": "Not a valid rike backup JSON",
+  "再点一次确认清空": "Tap again to confirm",
+  "已清空": "Cleared", "所有日程与记录已删除": "All tasks and records deleted",
+  "保存形象": "Save look",
+  "现在开始": "Starting now",
+  "智能体添加了日程": "Agent added a task",
+  "智能体补记了专注": "Agent logged focus time",
+  "(未命名)": "(untitled)",
+  "其他": "Other",
+  "无记录": "none logged",
+  "导入成功": "Imported",
+  "{t} 条日程 · {s} 条记录": "{t} tasks · {s} records",
+  "科目{n}颜色": "Subject {n} color",
+  "睡着啦": "Asleep",
+  "未安排": "Unscheduled",
+  "自定义主体色": "Custom body color",
+  "未命名": "untitled",
+  "2026-12-14 期末考试周 2026-11-02 期中冲刺": "2026-12-14 Finals week 2026-11-02 Midterm sprint",
+}};
+function T(s){ return LANG === "en" && Object.prototype.hasOwnProperty.call(I18N.en, s) ? I18N.en[s] : s; }
+function TF(s, v){ let o = T(s); if (v) for (const k in v) o = o.split("{"+k+"}").join(v[k]); return o; }
+const WD_SF = () => LANG === "en" ? ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"] : ["日","一","二","三","四","五","六"];          /* getDay 序 */
+const WD_MF = () => LANG === "en" ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] : ["一","二","三","四","五","六","日"];          /* 周一开头(带前缀用时加 周) */
+const WD_MS = () => LANG === "en" ? ["M","T","W","T","F","S","S"] : ["一","二","三","四","五","六","日"];                        /* 周一开头单字(周条) */
+const MON_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+/* 静态 DOM 翻译(en 启动时跑一遍; 文本节点整句匹配, 跳过 script/style 和输入框内容) */
+const flexReplace = (raw, k, en) =>
+  raw.replace(new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"), ""), en);
+function i18nWalk(el){
+  if (!el) return;
+  if (el.nodeType === 3){
+    const raw = el.nodeValue, k = raw.replace(/\s+/g, " ").trim();
+    if (k && I18N.en[k]) el.nodeValue = flexReplace(raw, k, I18N.en[k]);
+    return;
+  }
+  if (el.nodeType !== 1 || /^(script|style)$/i.test(el.tagName)) return;
+  for (const a of ["placeholder", "title", "aria-label"]){
+    const v = el.getAttribute && el.getAttribute(a);
+    if (v){ const k = v.replace(/\s+/g, " ").trim(); if (I18N.en[k]) el.setAttribute(a, flexReplace(v, k, I18N.en[k])); }
+  }
+  for (let i = 0; i < el.childNodes.length; i++) i18nWalk(el.childNodes[i]);
+}
+function dateHead(d){
+  return LANG === "en" ? `${WD_SF()[d.getDay()]}, ${MON_EN[d.getMonth()]} ${d.getDate()}`
+                       : `${d.getMonth()+1}月${d.getDate()}日 星期${WD_SF()[d.getDay()]}`;
+}
+function fmtDate(s){ return dateHead(parseD(s)); }
 function fmtDur(sec){
   sec = Math.max(0, Math.round(sec/60));
   const h = Math.floor(sec/60), m = sec%60;
+  if (LANG === "en") return !sec ? "0m" : !h ? `${m}m` : !m ? `${h}h` : `${h}h ${m}m`;
   if (!sec) return "0分钟";
   if (!h) return `${m}分钟`;
   if (!m) return `${h}小时`;
@@ -949,7 +1278,7 @@ function seed(){
       S(2,"GCN 预热 · 图表示基础",...hr(dstr(y1),15,30,50),dstr(y1)),
       S(3,"英语精读",...hr(t,8,10,25),t),
     ],
-    settings: {ahead:10,sound:true,notify:false,haptic:true,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""},
+    settings: {lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""},
     pet: petDefault(),
     timer: null,
     fired: {}
@@ -961,7 +1290,7 @@ function load(){
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.tasks)) return null;
-    d.settings = Object.assign({ahead:10,sound:true,notify:false,haptic:true,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
+    d.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
     d.sessions = d.sessions||[]; d.fired = d.fired||{}; d.timer = d.timer||null;
     d.pet = fixPet(d.pet);
     return d;
@@ -981,6 +1310,8 @@ function save(){
   }, 250);
 }
 db = load() || seed();
+LANG = db.settings.lang === "en" ? "en" : "zh";
+if (LANG === "en") i18nWalk(document.body);   /* 静态页一次性翻译; 动态内容各渲染层走 T()/TF() */
 
 /* ================= AI 智能体桥(本机 MCP, 只连 127.0.0.1) ================= */
 const AGENT = { port: db.settings.agentPort || 7676, ok: false, pend: [] };
@@ -991,7 +1322,7 @@ function agentApply(op){
       if (!t) return "没看懂这一条: " + op.args.text;
       purgeSample(); db.tasks.push(t); save();
       renderToday(); renderCal(); updateNext();
-      toast("智能体添加了日程", (t.start || "随时") + " · " + t.title);
+      toast(T("智能体添加了日程"), (t.start || T("随时")) + " · " + t.title);
       return "已添加: " + (t.start || "随时") + " " + t.title;
     }
     if (op.tool === "log_session"){
@@ -1000,7 +1331,7 @@ function agentApply(op){
       purgeSample();
       db.sessions.push({ id: uid(), cat: 0, subj: String(op.args.subject || "AI 记录").slice(0, 20), startTs: now - sec * 1000, endTs: now, sec, date: todayStr() });
       petEarn(sec); save(); renderSessions(); renderToday();
-      toast("智能体补记了专注", fmtDur(sec));
+      toast(T("智能体补记了专注"), fmtDur(sec));
       return "已补记 " + min + " 分钟专注";
     }
     if (op.tool === "feed_pet"){
@@ -1029,10 +1360,10 @@ async function agentSync(){
 }
 function agentState(){
   const el = $("#agent-state"); if (!el) return;
-  el.textContent = AGENT.ok && HUB.on ? "已连接 · 智能体 + 局域网联动中"
-    : AGENT.ok ? "已连接 · 127.0.0.1:" + AGENT.port + "（智能体可读写日课）"
-    : HUB.on ? "已连接 · 局域网联动中（手机与电脑同一份数据）"
-    : "未连接（本页开着时自动尝试连接本机智能体）";
+  el.textContent = AGENT.ok && HUB.on ? T("已连接 · 智能体 + 局域网联动中")
+    : AGENT.ok ? T("已连接 · 127.0.0.1:") + AGENT.port + T("（智能体可读写日课）")
+    : HUB.on ? T("已连接 · 局域网联动中（手机与电脑同一份数据）")
+    : T("未连接（本页开着时自动尝试连接本机智能体）");
   el.style.color = (AGENT.ok || HUB.on) ? "var(--accent)" : "";
 }
 setInterval(agentSync, 2500);
@@ -1050,7 +1381,7 @@ async function hubSync(){
   const j = await hubCall("/hub/sync", { token:HUB.token, savedAt:db.savedAt||0, db });
   if (j.db && Array.isArray(j.db.tasks) && (j.db.savedAt||0) > (db.savedAt||0)){
     db = j.db; saveLocal(); renderAll();
-    toast("已同步", "收到了其他设备的更新");
+    toast(T("已同步"), T("收到了其他设备的更新"));
   }
 }
 function hubPush(){
@@ -1063,10 +1394,10 @@ function hubPush(){
   });
 }
 function hubAskCode(){
-  openModal(`<h3>连接这台电脑</h3>
-    <div class="field"><label for="hub-code">输入电脑上 rike 桥打印的 6 位配对码</label>
+  openModal(`<h3>${T("连接这台电脑")}</h3>
+    <div class="field"><label for="hub-code">${T("输入电脑上 rike 桥打印的 6 位配对码")}</label>
     <input id="hub-code" class="mono" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:4px;"></div>
-    <div class="btnrow"><button class="btn sm" id="hub-x">取消</button><button class="btn sm pri" id="hub-ok">连接</button></div>`);
+    <div class="btnrow"><button class="btn sm" id="hub-x">${T("取消")}</button><button class="btn sm pri" id="hub-ok">${T("连接")}</button></div>`);
   $("#hub-x").onclick = closeModal;
   $("#hub-ok").onclick = async ()=>{
     try{
@@ -1075,7 +1406,7 @@ function hubAskCode(){
       HUB.token = j.token; HUB.on = true;
       try{ localStorage.setItem("rike-hub-token", j.token); }catch(e){}
       closeModal(); agentState(); hubPush();
-    }catch(e){ toast("配对失败", "核对电脑控制台里的 6 位配对码", true); }
+    }catch(e){ toast(T("配对失败"), T("核对电脑控制台里的 6 位配对码"), true); }
   };
 }
 (async ()=>{
@@ -1653,17 +1984,17 @@ function petStateText(){
   const st = petStage(), s = petState();
   if (s === "egg"){
     const left = Math.max(0, Math.ceil(2 - petGrowthSec()/3600));
-    return `蛋里的小家伙在等你的专注声——成长 ${fmtDur(petGrowthSec())}，还差 ${fmtDur(left*3600)} 孵化`;
+    return TF("蛋里的小家伙在等你的专注声——成长 {g}，还差 {l} 孵化", {g:fmtDur(petGrowthSec()), l:fmtDur(left*3600)});
   }
-  const grow = st === 1 ? ` · 成长 ${fmtDurH(petGrowthSec())}h / 20h` : "";
+  const grow = st === 1 ? TF(" · 成长 {g}h / 20h", {g:fmtDurH(petGrowthSec())}) : "";
   const lim = petStarveLim(), sv = db.pet.starve || 0;
-  const starving = sv > 0 ? ` · 已挨饿 ${sv} 天` + (lim > 0 && st > 0 && !db.pet.custom && sv < lim ? `，再 ${lim - sv} 天要退化！` : "") : "";
-  return ({
+  const starving = sv > 0 ? TF(" · 已挨饿 {n} 天", {n:sv}) + (lim > 0 && st > 0 && !db.pet.custom && sv < lim ? TF("，再 {n} 天要退化！", {n:lim - sv}) : "") : "";
+  return T(({
     ok:"它今天很有精神，陪它坐一会儿吧",
     hungry:"肚子有点饿了——喂一颗存粮吧",
     sad:"有点想你了，点点它陪陪它",
     sleep:"睡着了……喂一口存粮，它会醒过来的",
-  })[s] + grow + starving;
+  })[s]) + grow + starving;
 }
 function petFx(txt, n){
   const box = $("#pet-deco");
@@ -1693,7 +2024,7 @@ let petSayTimer = 0;
 function petSay(pool){
   const lines = PET_LINES[pool], b = $("#pet-bubble");
   if (!lines || !b) return;
-  b.textContent = lines[Math.floor(Math.random()*lines.length)];
+  b.textContent = T(lines[Math.floor(Math.random()*lines.length)]);
   b.hidden = false;
   b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
   clearTimeout(petSayTimer);
@@ -1706,7 +2037,7 @@ function petEarn(sec){
   if (n <= 0) return;
   db.pet.food += n;
   if (view === "pet") renderPet();
-  toast("存粮 +"+n, `${db.pet.name||"小家伙"} 的饭盒更满了`);
+  toast(TF("存粮 +{n}", {n}), TF("{name} 的饭盒更满了", {name: db.pet.name || T("小家伙")}));
 }
 /* 每天结算: 吃口粮/掉饱食/挨饿计数/退化。蛋是休眠态, 不吃不饿不掉心情 */
 let petEvents = [];
@@ -1743,18 +2074,18 @@ function renderPet(){
   const evs = petDaily();
   const st = petStage(), s = petState();
   if (evs.length){
-    toast(`${db.pet.name || "小家伙"} 挨饿太久了`, `退回了${evs[evs.length - 1]}……给它补点存粮吧`);
+    toast(TF("{name} 挨饿太久了", {name: db.pet.name || T("小家伙")}), TF("退回了{stage}……给它补点存粮吧", {stage: T(evs[evs.length - 1])}));
     petSay("starve");
   }
   const stageName = st===0 ? "蛋" : st===1 ? "幼年" : "成年";
-  $("#pet-nm").textContent = db.pet.name || "无名小家伙";
-  $("#pet-stagechip").textContent = stageName + (db.pet.custom ? " · 自定义" : "");
+  $("#pet-nm").textContent = db.pet.name || T("无名小家伙");
+  $("#pet-stagechip").textContent = T(stageName) + (db.pet.custom ? T(" · 自定义") : "");
   $("#pet-hunger-v").textContent = Math.round(db.pet.hunger) + "%";
   $("#pet-hunger-bar").style.width = db.pet.hunger + "%";
   $("#pet-mood-v").textContent = Math.round(db.pet.mood) + "%";
   $("#pet-mood-bar").style.width = db.pet.mood + "%";
   $("#pet-hint").textContent = petStateText();
-  $("#pet-food-v").textContent = `${db.pet.food} / 10 颗`;
+  $("#pet-food-v").textContent = TF("{n} / 10 颗", {n: db.pet.food});
   $("#pet-feed").disabled = db.pet.food <= 0 || db.pet.hunger >= 100;
   $("#pet-starve").value = String(petStarveLim());
   /* 物种选择 */
@@ -1769,7 +2100,7 @@ function renderPet(){
       }));
       const b = document.createElement("button");
       b.className = "petopt"; b.dataset.pi = i;
-      b.append(c, Object.assign(document.createElement("small"),{textContent:p.name}));
+      b.append(c, Object.assign(document.createElement("small"),{textContent:T(p.name)}));
       box.appendChild(b);
     });
     box.addEventListener("click", e=>{
@@ -1782,7 +2113,7 @@ function renderPet(){
   renderPetOpts();
   if (document.activeElement !== $("#pet-tint")) $("#pet-tint").value = db.pet.tint || petPal().B;
   petRender(false); petRender(true);
-  $("#petmini-txt").innerHTML = `<b>${esc(db.pet.name||"小家伙")}</b> · ${{ok:"精神不错",hungry:"有点饿",sad:"想你了",sleep:"睡着啦",egg:"蛋"}[s]}`;
+  $("#petmini-txt").innerHTML = `<b>${esc(db.pet.name||T("小家伙"))}</b> · ${T({ok:"精神不错",hungry:"有点饿",sad:"想你了",sleep:"睡着啦",egg:"蛋"}[s])}`;
 }
 function renderPetOpts(){
   document.querySelectorAll("#pet-sel .petopt").forEach(b=>{
@@ -1806,7 +2137,7 @@ $("#pet-wrap").addEventListener("click", ()=>{
 });
 $("#pet-feed").onclick = ()=>{
   if (db.pet.food <= 0) return;
-  if (petStage() === 0){ toast("蛋还不需要吃东西","先攒专注让它孵出来"); return; }
+  if (petStage() === 0){ toast(T("蛋还不需要吃东西"), T("先攒专注让它孵出来")); return; }
   db.pet.food--;
   db.pet.hunger = Math.min(100, db.pet.hunger + 14);
   db.pet.mood = Math.min(100, db.pet.mood + 4);
@@ -1815,13 +2146,13 @@ $("#pet-feed").onclick = ()=>{
   petSay("feed");
   if (petState() !== "sleep") petAnim.jumpUntil = Date.now() + 500;
   save(); renderPet();
-  if (db.pet.hunger >= 100) toast("吃饱啦","它满足地眯起了眼");
+  if (db.pet.hunger >= 100) toast(T("吃饱啦"), T("它满足地眯起了眼"));
 };
 $("#pet-rename").onclick = ()=>{
-  openModal(`<h3>给小家伙起名</h3>
-    <div class="field"><label for="pet-nm-inp">名字（最多 8 个字）</label>
+  openModal(`<h3>${T("给小家伙起名")}</h3>
+    <div class="field"><label for="pet-nm-inp">${T("名字（最多 8 个字）")}</label>
     <input id="pet-nm-inp" value="${esc(db.pet.name)}" maxlength="8"></div>
-    <div class="btnrow"><button class="btn sm" id="pet-nm-x">取消</button><button class="btn sm pri" id="pet-nm-ok">保存</button></div>`);
+    <div class="btnrow"><button class="btn sm" id="pet-nm-x">${T("取消")}</button><button class="btn sm pri" id="pet-nm-ok">${T("保存")}</button></div>`);
   $("#pet-nm-x").onclick = closeModal;
   $("#pet-nm-ok").onclick = ()=>{
     db.pet.name = $("#pet-nm-inp").value.trim() || "团子";
@@ -1840,11 +2171,11 @@ function openPetEditor(){
   let ch = "B";
   const pal = petPal();
   const colors = {B:pal.B, D:pal.D, W:pal.W, E:pal.E, P:pal.P, A:pal.A};
-  openModal(`<h3>像素编辑器 · 32×32</h3>
+  openModal(`<h3>${T("像素编辑器 · 32×32")}</h3>
     <div class="pxed" id="pxed"></div>
     <div class="pxpal" id="pxpal"></div>
-    <p class="help" style="text-align:center;">点色板选颜色，按住拖动涂色；「橡皮」擦掉像素。</p>
-    <div class="btnrow"><button class="btn sm" id="px-clear">清空</button><span style="flex:1;"></span><button class="btn sm" id="px-cancel">取消</button><button class="btn sm pri" id="px-save">保存形象</button></div>`);
+    <p class="help" style="text-align:center;">${T("点色板选颜色，按住拖动涂色；「橡皮」擦掉像素。")}</p>
+    <div class="btnrow"><button class="btn sm" id="px-clear">${T("清空")}</button><span style="flex:1;"></span><button class="btn sm" id="px-cancel">${T("取消")}</button><button class="btn sm pri" id="px-save">${T("保存形象")}</button></div>`);
   const grid = $("#pxed");
   const cells = [];
   for (let y=0;y<32;y++) for (let x=0;x<32;x++){
@@ -1876,7 +2207,7 @@ function openPetEditor(){
     const b = document.createElement("button");
     b.className = key === "." ? "erase" : "";
     b.style.background = key === "." ? "" : colors[key];
-    b.title = label; b.dataset.k = key;
+    b.title = T(label); b.dataset.k = key;
     palBox.appendChild(b);
   };
   Object.keys(colors).forEach(k=>mkPal(k,{B:"身体",D:"深色",W:"白",E:"眼睛",P:"粉色",A:"强调"}[k]));
@@ -1890,25 +2221,25 @@ function openPetEditor(){
   $("#px-cancel").onclick = closeModal;
   $("#px-clear").onclick = ()=>{ for (let y=0;y<32;y++) for (let x=0;x<32;x++) rows[y][x]="."; sync(); };
   $("#px-save").onclick = ()=>{
-    if (!rows.some(r=>r.some(c=>c!=="."))){ toast("画布是空的","至少画一个像素再保存",true); return; }
+    if (!rows.some(r=>r.some(c=>c!=="."))){ toast(T("画布是空的"), T("至少画一个像素再保存"), true); return; }
     db.pet.custom = rows.map(r=>r.join(""));
     save(); closeModal(); renderPet();
-    toast("形象已保存", "它换上了你画的样子");
+    toast(T("形象已保存"), T("它换上了你画的样子"));
   };
 }
 $("#pet-editor").onclick = openPetEditor;
 $("#pet-export").onclick = ()=>{
   const data = JSON.stringify({v:1,rows:db.pet.custom || PET_ART[db.pet.species % PET_ART.length].art,tint:db.pet.tint});
-  openModal(`<h3>导出形象</h3>
+  openModal(`<h3>${T("导出形象")}</h3>
     <textarea class="ta mono" id="petexp" style="min-height:140px;">${esc(data)}</textarea>
-    <div class="btnrow"><button class="btn sm" id="petexp-x">关闭</button><button class="btn sm pri" id="petexp-cp">复制</button></div>`);
+    <div class="btnrow"><button class="btn sm" id="petexp-x">${T("关闭")}</button><button class="btn sm pri" id="petexp-cp">${T("复制")}</button></div>`);
   $("#petexp-x").onclick = closeModal;
   $("#petexp-cp").onclick = ()=>copyTA($("#petexp"));
 };
 $("#pet-import").onclick = ()=>{
-  openModal(`<h3>导入形象</h3>
-    <textarea class="ta mono" id="petimp" placeholder='粘贴别人分享的形象代码' style="min-height:140px;"></textarea>
-    <div class="btnrow"><button class="btn sm" id="petimp-x">取消</button><button class="btn sm pri" id="petimp-ok">导入</button></div>`);
+  openModal(`<h3>${T("导入形象")}</h3>
+    <textarea class="ta mono" id="petimp" placeholder='${T("粘贴别人分享的形象代码")}' style="min-height:140px;"></textarea>
+    <div class="btnrow"><button class="btn sm" id="petimp-x">${T("取消")}</button><button class="btn sm pri" id="petimp-ok">${T("导入")}</button></div>`);
   $("#petimp-x").onclick = closeModal;
   $("#petimp-ok").onclick = ()=>{
     try{
@@ -1926,8 +2257,8 @@ $("#pet-import").onclick = ()=>{
       db.pet.custom = rows;
       if (d.tint && /^#[0-9a-fA-F]{6}$/.test(d.tint)) db.pet.tint = d.tint;
       save(); closeModal(); renderPet();
-      toast("形象导入成功","看看新伙伴！");
-    }catch(e){ toast("导入失败","代码不是有效的日课形象",true); }
+      toast(T("形象导入成功"), T("看看新伙伴！"));
+    }catch(e){ toast(T("导入失败"), T("代码不是有效的日课形象"), true); }
   };
 };
 $("#petmini").onclick = ()=>showView("pet");
@@ -1949,7 +2280,7 @@ function toast(title, sub, warn){
   const el = document.createElement("div");
   el.className = "toast" + (warn ? " warn" : "");
   el.innerHTML = `<div><b>${esc(title)}</b>${sub?`<span>${esc(sub)}</span>`:""}</div>
-    <button class="iconbtn" aria-label="关闭"><svg class="i" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button>`;
+    <button class="iconbtn" aria-label="${T("关闭")}"><svg class="i" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button>`;
   el.querySelector("button").onclick = () => dropToast(el);
   $("#toasts").appendChild(el);
   setTimeout(()=>dropToast(el), 9000);
@@ -2068,11 +2399,11 @@ function milesLeft(){
 }
 function updatePlanInfo(){
   const w = weekInfo();
-  let html = `<b>W${w.num}</b> · 第 ${w.day}/7 天`;
+  let html = `<b>W${w.num}</b> · ${TF("第 {d}/7 天", {d:w.day})}`;
   const end = parseD(db.settings.anchor || todayStr()).getTime() + ((+db.settings.w1) - (+db.settings.w0) + 1) * 6048e5 - 864e5;
   const left = Math.round((end - new Date().setHours(0,0,0,0)) / 864e5);
-  if (!w.past && left > 0) html += ` · 距收官 ${left} 天`;
-  for (const m of milesLeft()) html += `<div class="mi"><span>${esc(m.txt)}</span><b class="mono">${m.left} 天</b></div>`;
+  if (!w.past && left > 0) html += TF(" · 距收官 {n} 天", {n:left});
+  for (const m of milesLeft()) html += `<div class="mi"><span>${esc(m.txt)}</span><b class="mono">${TF("{n} 天", {n:m.left})}</b></div>`;
   $("#planinfo").innerHTML = html;
 }
 function purgeSample(){
@@ -2089,7 +2420,7 @@ function renderToday(){
   const planMin = ts.reduce((s,x)=>{ const a=minsOf(x.start), b=minsOf(x.end); return s + (a!=null&&b!=null ? b-a : 0); },0);
   const todaySec = db.sessions.filter(s=>s.date===t).reduce((s,x)=>s+x.sec,0) + timerLiveSec(t);
   $("#today-title").textContent = fmtDate(t);
-  $("#today-sub").textContent = ts.length ? `完成 ${done}/${ts.length} · 已记录 ${fmtDur(todaySec)}` : "今天还没有安排";
+  $("#today-sub").textContent = ts.length ? TF("完成 {d}/{n} · 已记录 {t}", {d:done, n:ts.length, t:fmtDur(todaySec)}) : T("今天还没有安排");
   $("#sample-banner").hidden = !db.sample;
   $("#ls-banner").hidden = lsOK;
 
@@ -2099,50 +2430,50 @@ function renderToday(){
   for (const [name,cond] of groups){
     const g = ts.filter(cond);
     if (!g.length) continue;
-    html += `<div class="tgroup"><h4>${name}<span class="n">${g.length} 项</span></h4>` + g.map(x=>{
+    html += `<div class="tgroup"><h4>${T(name)}<span class="n">${TF("{n} 项", {n:g.length})}</span></h4>` + g.map(x=>{
       const dn = isDone(x,t);
       const late = !dn && x.end && minsOf(x.end) < nm;
       const active = !dn && minsOf(x.start)!=null && minsOf(x.start)<=nm && (!x.end || minsOf(x.end)>nm);
-      const time = x.start ? `${esc(x.start)}${x.end?" – "+esc(x.end):""}` : "随时";
-      const pri = x.pri===0?`<span class="pri p0">高</span>`:x.pri===1?`<span class="pri p1">中</span>`:"";
-      const rep = x.rep?`<span class="chip" style="font-size:10.5px;padding:1px 6px;">${x.rep==="d"?"每天":"每周"}</span>`:"";
+      const time = x.start ? `${esc(x.start)}${x.end?" – "+esc(x.end):""}` : T("随时");
+      const pri = x.pri===0?`<span class="pri p0">${T("高")}</span>`:x.pri===1?`<span class="pri p1">${T("中")}</span>`:"";
+      const rep = x.rep?`<span class="chip" style="font-size:10.5px;padding:1px 6px;">${x.rep==="d"?T("每天"):T("每周")}</span>`:"";
       return `<div class="trow ${dn?"done":""} ${late?"late":""}" data-id="${x.id}">
-        <button class="ck" aria-label="完成" data-act="done">${dn?'<svg class="i" style="width:13px;height:13px;stroke-width:2.4" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9"/></svg>':""}</button>
+        <button class="ck" aria-label="${T("完成")}" data-act="done">${dn?'<svg class="i" style="width:13px;height:13px;stroke-width:2.4" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9"/></svg>':""}</button>
         <span class="time mono">${time}</span>
         <span class="stripe" style="background:${colOf(x.cat)}"></span>
         <span class="title">${esc(x.title)}</span>
-        ${rep}${active?'<span class="chip nowchip">进行中</span>':""}${late?'<span class="chip" style="color:var(--danger)">已过期</span>':""}${pri}
+        ${rep}${active?`<span class="chip nowchip">${T("进行中")}</span>`:""}${late?`<span class="chip" style="color:var(--danger)">${T("已过期")}</span>`:""}${pri}
         <span class="acts">
-          <button class="iconbtn" data-act="edit" aria-label="编辑"><svg class="i" viewBox="0 0 20 20"><path d="M13.5 3.5l3 3L7.5 15.5H4.5v-3z"/></svg></button>
-          <button class="iconbtn" data-act="del" aria-label="删除"><svg class="i" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6.5 6l.8 10.5h5.4L13.5 6M9 9v4.5M11 9v4.5"/></svg></button>
+          <button class="iconbtn" data-act="edit" aria-label="${T("编辑")}"><svg class="i" viewBox="0 0 20 20"><path d="M13.5 3.5l3 3L7.5 15.5H4.5v-3z"/></svg></button>
+          <button class="iconbtn" data-act="del" aria-label="${T("删除")}"><svg class="i" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6.5 6l.8 10.5h5.4L13.5 6M9 9v4.5M11 9v4.5"/></svg></button>
         </span>
       </div>`;
     }).join("") + "</div>";
   }
-  $("#today-list").innerHTML = html || `<div class="empty">今天还没有日程——在上面输入框速记一条，或点「详细」</div>`;
+  $("#today-list").innerHTML = html || `<div class="empty">${T("今天还没有日程——在上面输入框速记一条，或点「详细」")}</div>`;
 
   const wk = weekRange(), winfo = weekInfo();
   const wstrip = `<div class="weekstrip">` + wk.map((ds,i)=>{
     const c = tasksOf(ds).length;
     return `<button class="wcell ${ds===t?"today":""}" data-wd="${ds}" aria-label="${ds}">
-      <span class="wl">${"一二三四五六日"[i]}</span><span class="wn mono">${+ds.slice(8)}</span>
+      <span class="wl">${WD_MS()[i]}</span><span class="wn mono">${+ds.slice(8)}</span>
       <span class="wdts">${c?`<i></i>`.repeat(Math.min(c,3)):""}</span></button>`;
   }).join("") + `</div>`;
   const goalSec = (db.settings.goal || 4) * 3600;
   const gp = Math.min(100, Math.round(todaySec / goalSec * 100));
   const aside = [
-    `<div class="statmini"><span>已记录专注</span><b class="mono">${fmtDur(todaySec)}</b></div>`,
-    `<div class="statmini"><span>今日目标 ${db.settings.goal} 小时</span><b class="mono">${gp}%</b></div>`,
+    `<div class="statmini"><span>${T("已记录专注")}</span><b class="mono">${fmtDur(todaySec)}</b></div>`,
+    `<div class="statmini"><span>${TF("今日目标 {n} 小时", {n:db.settings.goal})}</span><b class="mono">${gp}%</b></div>`,
     `<div class="progress-row" style="margin-top:2px;"><div class="meter"><i style="width:${gp}%"></i></div></div>`,
-    `<div class="statmini" style="margin-top:4px;"><span>今日计划时长</span><b class="mono">${planMin?fmtDur(planMin*60):"—"}</b></div>`,
-    `<div class="statmini"><span>待完成</span><b class="mono">${ts.length-done} 项</b></div>`,
+    `<div class="statmini" style="margin-top:4px;"><span>${T("今日计划时长")}</span><b class="mono">${planMin?fmtDur(planMin*60):"—"}</b></div>`,
+    `<div class="statmini"><span>${T("待完成")}</span><b class="mono">${TF("{n} 项", {n:ts.length-done})}</b></div>`,
   ];
   const next = nextTask();
-  if (next) aside.push(`<div class="statmini"><span>下一项 · ${esc(next.start)}</span><b style="font-size:13px">${esc(next.title)}</b></div>`);
+  if (next) aside.push(`<div class="statmini"><span>${TF("下一项 · {t}", {t:esc(next.start)})}</span><b style="font-size:13px">${esc(next.title)}</b></div>`);
   const run = db.timer && !db.timer.doneAt;
-  if (run) aside.push(`<div class="statmini"><span>计时进行中</span><b style="color:var(--accent);font-size:13px">${esc(cats()[run.cat]||"专注")} · ${esc(run.subj||"未命名")}</b></div>`);
-  $("#today-aside").innerHTML = `<h3 style="margin-bottom:2px;">本周 · W${winfo.num}</h3>${wstrip}` + aside.join("") +
-    `<div class="progress-row" style="margin-top:8px;"><span style="font-size:12px;color:var(--ink2);flex:none;">完成</span><div class="meter"><i style="width:${ts.length?Math.round(done/ts.length*100):0}%"></i></div><span class="mono" style="font-size:12px;color:var(--ink2)">${ts.length?Math.round(done/ts.length*100):0}%</span></div>`;
+  if (run) aside.push(`<div class="statmini"><span>${T("计时进行中")}</span><b style="color:var(--accent);font-size:13px">${esc(cats()[run.cat]||T("专注"))} · ${esc(run.subj||T("未命名"))}</b></div>`);
+  $("#today-aside").innerHTML = `<h3 style="margin-bottom:2px;">${TF("本周 · W{n}", {n:winfo.num})}</h3>${wstrip}` + aside.join("") +
+    `<div class="progress-row" style="margin-top:8px;"><span style="font-size:12px;color:var(--ink2);flex:none;">${T("完成")}</span><div class="meter"><i style="width:${ts.length?Math.round(done/ts.length*100):0}%"></i></div><span class="mono" style="font-size:12px;color:var(--ink2)">${ts.length?Math.round(done/ts.length*100):0}%</span></div>`;
 }
 function nextTask(){
   const nm = nowMin();
@@ -2186,52 +2517,52 @@ function parseLine(line, defDate){
   const rc = /#(\S+)/.exec(s);
   if (rc){ const name = rc[1]; const i = cats().findIndex(c=>c && (c===name || c.includes(name) || name.includes(c))); if (i>-1) cat = i; s = s.replace(rc[0],""); }
   let pri = 2;
-  const rp = /!([高中低])/.exec(s);
-  if (rp){ pri = "高中低".indexOf(rp[1]); s = s.replace(rp[0],""); }
+  const rp = /!([高中低]|high|med|low)/i.exec(s);
+  if (rp){ pri = {高:0,中:1,低:2,high:0,med:1,low:2}[rp[1].toLowerCase()] ?? 2; s = s.replace(rp[0],""); }
   let rep = "";
-  const rr = /@(每天|每日|每周)/.exec(s);
-  if (rr){ rep = rr[1]==="每周" ? "w" : "d"; s = s.replace(rr[0],""); }
+  const rr = /@(每天|每日|每周|daily|weekly)/i.exec(s);
+  if (rr){ rep = (rr[1]==="每周" || rr[1].toLowerCase()==="weekly") ? "w" : "d"; s = s.replace(rr[0],""); }
   const title = s.replace(/\s+/g," ").trim();
   if (!title && !start) return null;
-  return {id:uid(),title:title||"(未命名)",date:defDate||todayStr(),start:start||"",end:end||"",cat,pri:rp?pri:2,done,rep};
+  return {id:uid(),title:title||T("(未命名)"),date:defDate||todayStr(),start:start||"",end:end||"",cat,pri:rp?pri:2,done,rep};
 }
 $("#qa-input").addEventListener("keydown", e=>{
   if (e.key !== "Enter") return;
   const v = e.target.value.trim();
   if (!v) return;
   const t = parseLine(v);
-  if (!t){ toast("没看懂这一条","试试「19:00-20:30 数学分析 #数学 !高」",true); return; }
+  if (!t){ toast(T("没看懂这一条"), T("试试「19:00-20:30 数学分析 #数学 !高」"), true); return; }
   purgeSample(); db.tasks.push(t); save();
   e.target.value = "";
   renderToday(); renderCal(); updateNext();
-  toast("已添加", `${t.start||"随时"} · ${t.title}`);
+  toast(T("已添加"), `${t.start||T("随时")} · ${t.title}`);
 });
 $("#qa-detail").onclick = ()=>taskModal(todayStr());
 function taskModal(date, editId){
   const t = editId ? db.tasks.find(x=>x.id===editId) : {id:"",title:"",date,start:"",end:"",cat:0,pri:2,done:false,rep:""};
   openModal(`
-    <h3>${editId?"编辑日程":"新建日程"}</h3>
+    <h3>${T(editId?"编辑日程":"新建日程")}</h3>
     <div class="mgrid">
-      <div class="field full"><label for="tm-title">标题</label><input id="tm-title" value="${esc(t.title)}" maxlength="80"></div>
-      <div class="field"><label for="tm-date">日期</label><input class="mono" id="tm-date" type="date" value="${t.date||date}"></div>
-      <div class="field"><label for="tm-cat">科目</label><select id="tm-cat">${cats().map((c,i)=>`<option value="${i}" ${t.cat===i?"selected":""}>${esc(c||"科目"+(i+1))}</option>`).join("")}</select></div>
-      <div class="field"><label for="tm-s">开始</label><input class="mono" id="tm-s" type="time" value="${t.start||""}"></div>
-      <div class="field"><label for="tm-e">结束（可空）</label><input class="mono" id="tm-e" type="time" value="${t.end||""}"></div>
-      <div class="field"><label for="tm-pri">优先级</label><select id="tm-pri">
-        <option value="2" ${t.pri===2?"selected":""}>低</option>
-        <option value="1" ${t.pri===1?"selected":""}>中</option>
-        <option value="0" ${t.pri===0?"selected":""}>高</option>
+      <div class="field full"><label for="tm-title">${T("标题")}</label><input id="tm-title" value="${esc(t.title)}" maxlength="80"></div>
+      <div class="field"><label for="tm-date">${T("日期")}</label><input class="mono" id="tm-date" type="date" value="${t.date||date}"></div>
+      <div class="field"><label for="tm-cat">${T("科目")}</label><select id="tm-cat">${cats().map((c,i)=>`<option value="${i}" ${t.cat===i?"selected":""}>${esc(c||TF("科目{n}",{n:i+1}))}</option>`).join("")}</select></div>
+      <div class="field"><label for="tm-s">${T("开始")}</label><input class="mono" id="tm-s" type="time" value="${t.start||""}"></div>
+      <div class="field"><label for="tm-e">${T("结束（可空）")}</label><input class="mono" id="tm-e" type="time" value="${t.end||""}"></div>
+      <div class="field"><label for="tm-pri">${T("优先级")}</label><select id="tm-pri">
+        <option value="2" ${t.pri===2?"selected":""}>${T("低")}</option>
+        <option value="1" ${t.pri===1?"selected":""}>${T("中")}</option>
+        <option value="0" ${t.pri===0?"selected":""}>${T("高")}</option>
       </select></div>
-      <div class="field"><label for="tm-rep">重复</label><select id="tm-rep">
-        <option value="" ${!t.rep?"selected":""}>不重复</option>
-        <option value="d" ${t.rep==="d"?"selected":""}>每天</option>
-        <option value="w" ${t.rep==="w"?"selected":""}>每周这天</option>
+      <div class="field"><label for="tm-rep">${T("重复")}</label><select id="tm-rep">
+        <option value="" ${!t.rep?"selected":""}>${T("不重复")}</option>
+        <option value="d" ${t.rep==="d"?"selected":""}>${T("每天")}</option>
+        <option value="w" ${t.rep==="w"?"selected":""}>${T("每周这天")}</option>
       </select></div>
     </div>
     <div class="btnrow">
-      ${editId?'<button class="btn sm warn" id="tm-del">删除</button>':""}
-      <button class="btn sm" id="tm-cancel">取消</button>
-      <button class="btn sm pri" id="tm-save">保存</button>
+      ${editId?`<button class="btn sm warn" id="tm-del">${T("删除")}</button>`:""}
+      <button class="btn sm" id="tm-cancel">${T("取消")}</button>
+      <button class="btn sm pri" id="tm-save">${T("保存")}</button>
     </div>`);
   $("#tm-cancel").onclick = closeModal;
   $("#tm-save").onclick = ()=>{
@@ -2254,13 +2585,13 @@ function renderCal(){
   /* 若滑动动画未落定, 先完成待定的换月 */
   if (calSwipe.pending){ calShift(calSwipe.pending); calSwipe.pending = 0; }
   cancelAnimationFrame(calSwipe.raf);
-  $("#cal-title").textContent = `${calY}年${calM+1}月`;
+  $("#cal-title").textContent = TF("{y}年{m}月", {y:calY, m: LANG==="en" ? MON_EN[calM] : calM+1});
   const monthTasks = db.tasks.filter(t=>t.date.startsWith(`${calY}-${pad(calM+1)}`));
   const planMin = monthTasks.reduce((s,x)=>{const a=minsOf(x.start),b=minsOf(x.end);return s+(a!=null&&b!=null?b-a:0);},0);
   const dn = monthTasks.filter(t=>t.done).length;
-  $("#cal-sub").textContent = `本月 ${monthTasks.length} 项日程 · 完成 ${dn} · 计划 ${fmtDur(planMin*60)}`;
+  $("#cal-sub").textContent = TF("本月 {n} 项日程 · 完成 {d} · 计划 {t}", {n:monthTasks.length, d:dn, t:fmtDur(planMin*60)});
   let wd = "";
-  for (const w of ["一","二","三","四","五","六","日"]) wd += `<div class="wd">周${w}</div>`;
+  for (const w of WD_MF()) wd += `<div class="wd">${LANG==="en" ? w : "周"+w}</div>`;
   $("#cal-wd").innerHTML = wd;
   const first = new Date(calY, calM, 1);
   const lead = (first.getDay()+6)%7;
@@ -2402,32 +2733,32 @@ function renderDayPanel(){
   const sec = sess.reduce((s,x)=>s+x.sec,0);
   $("#daypanel").innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-      <h3 class="serif" style="margin:0;font-size:19px;">${fmtDate(selDate)}${selDate===todayStr()?" · 今天":""}</h3>
-      <span class="chip mono">${fmtDur(sec)} 专注</span>
+      <h3 class="serif" style="margin:0;font-size:19px;">${fmtDate(selDate)}${selDate===todayStr()?T(" · 今天"):""}</h3>
+      <span class="chip mono">${TF("{t} 专注", {t:fmtDur(sec)})}</span>
       <span style="margin-left:auto;display:flex;gap:8px;">
-        <button class="btn sm" id="dp-md-in">导入 MD</button>
-        <button class="btn sm" id="dp-md-out">导出 MD</button>
-        <button class="btn sm pri" id="dp-add">加日程</button>
+        <button class="btn sm" id="dp-md-in">${T("导入 MD")}</button>
+        <button class="btn sm" id="dp-md-out">${T("导出 MD")}</button>
+        <button class="btn sm pri" id="dp-add">${T("加日程")}</button>
       </span>
     </div>
     ${ts.map(x=>`<div class="trow ${isDone(x,selDate)?"done":""}" data-id="${x.id}">
-        <button class="ck" data-act="done" aria-label="完成">${isDone(x,selDate)?'<svg class="i" style="width:13px;height:13px;stroke-width:2.4" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9"/></svg>':""}</button>
-        <span class="time mono">${x.start?esc(x.start)+(x.end?" – "+esc(x.end):""):"随时"}</span>
+        <button class="ck" data-act="done" aria-label="${T("完成")}">${isDone(x,selDate)?'<svg class="i" style="width:13px;height:13px;stroke-width:2.4" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9"/></svg>':""}</button>
+        <span class="time mono">${x.start?esc(x.start)+(x.end?" – "+esc(x.end):""):T("随时")}</span>
         <span class="stripe" style="background:${colOf(x.cat)}"></span>
         <span class="title">${esc(x.title)}</span>
-        ${x.rep?`<span class="chip" style="font-size:10.5px;padding:1px 6px;">${x.rep==="d"?"每天":"每周"}</span>`:""}
-        ${x.pri===0?'<span class="pri p0">高</span>':x.pri===1?'<span class="pri p1">中</span>':""}
+        ${x.rep?`<span class="chip" style="font-size:10.5px;padding:1px 6px;">${x.rep==="d"?T("每天"):T("每周")}</span>`:""}
+        ${x.pri===0?`<span class="pri p0">${T("高")}</span>`:x.pri===1?`<span class="pri p1">${T("中")}</span>`:""}
         <span class="acts">
-          <button class="iconbtn" data-act="edit" aria-label="编辑"><svg class="i" viewBox="0 0 20 20"><path d="M13.5 3.5l3 3L7.5 15.5H4.5v-3z"/></svg></button>
-          <button class="iconbtn" data-act="del" aria-label="删除"><svg class="i" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6.5 6l.8 10.5h5.4L13.5 6M9 9v4.5M11 9v4.5"/></svg></button>
-        </span></div>`).join("") || `<div class="empty">这一天还没有日程</div>`}`;
+          <button class="iconbtn" data-act="edit" aria-label="${T("编辑")}"><svg class="i" viewBox="0 0 20 20"><path d="M13.5 3.5l3 3L7.5 15.5H4.5v-3z"/></svg></button>
+          <button class="iconbtn" data-act="del" aria-label="${T("删除")}"><svg class="i" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6.5 6l.8 10.5h5.4L13.5 6M9 9v4.5M11 9v4.5"/></svg></button>
+        </span></div>`).join("") || `<div class="empty">${T("这一天还没有日程")}</div>`}`;
   $("#dp-add").onclick = ()=>taskModal(selDate);
   $("#dp-md-in").onclick = ()=>mdModal(selDate);
   $("#dp-md-out").onclick = ()=>{
     const md = exportMD(selDate);
-    openModal(`<h3>导出 MD · ${fmtDate(selDate)}</h3>
+    openModal(`<h3>${T("导出 MD")} · ${fmtDate(selDate)}</h3>
       <textarea class="ta" id="md-ta" style="min-height:180px;">${esc(md)}</textarea>
-      <div class="btnrow"><button class="btn sm" id="md-x">关闭</button><button class="btn sm pri" id="md-cp">复制</button></div>`);
+      <div class="btnrow"><button class="btn sm" id="md-x">${T("关闭")}</button><button class="btn sm pri" id="md-cp">${T("复制")}</button></div>`);
     $("#md-x").onclick = closeModal;
     $("#md-cp").onclick = ()=>copyTA($("#md-ta"));
   };
@@ -2452,19 +2783,19 @@ function exportMD(date){
   const lines = tasksOf(date).sort((a,b)=>(minsOf(a.start)??1e9)-(minsOf(b.start)??1e9))
     .map(x=>{
       const time = x.start ? `${x.start}${x.end?"-"+x.end:""}` : "";
-      const pri = x.pri<2 ? ` !${"高中低"[x.pri]}` : "";
-      const rep = x.rep==="d" ? " @每天" : x.rep==="w" ? " @每周" : "";
-      return `- [${isDone(x,date)?"x":" "}] ${time?time+" ":""}${x.title} #${cats()[x.cat]||"其他"}${pri}${rep}`;
+      const pri = LANG==="en" ? (x.pri<2 ? ` !${["high","med","low"][x.pri]}` : "") : (x.pri<2 ? ` !${"高中低"[x.pri]}` : "");
+      const rep = LANG==="en" ? (x.rep==="d" ? " @daily" : x.rep==="w" ? " @weekly" : "") : (x.rep==="d" ? " @每天" : x.rep==="w" ? " @每周" : "");
+      return `- [${isDone(x,date)?"x":" "}] ${time?time+" ":""}${x.title} #${cats()[x.cat]||T("其他")}${pri}${rep}`;
     });
   const rec = db.sessions.filter(s=>s.date===date).sort((a,b)=>a.startTs-b.startTs)
     .map(x=>`- ${pad(new Date(x.startTs).getHours())}:${pad(new Date(x.startTs).getMinutes())} ${x.subj||cats()[x.cat]} · ${fmtDur(x.sec)}`);
-  return `## ✅ Tasks\n${lines.join("\n") || "- [ ] "}${rec.length?`\n\n## 📚 学习记录（计时）\n${rec.join("\n")}`:""}`;
+  return `## ✅ Tasks\n${lines.join("\n") || "- [ ] "}${rec.length?`\n\n${LANG==="en"?"## 📚 Study log (timer)":"## 📚 学习记录（计时）"}\n${rec.join("\n")}`:""}`;
 }
 function mdModal(date){
-  openModal(`<h3>导入 MD · ${fmtDate(date)}</h3>
-    <textarea class="ta" id="md-ta" placeholder="- 08:30-10:00 数学分析习题 #数学 !高&#10;- [x] 07:30 晨跑 #其他&#10;- 背单词 #英语"></textarea>
-    <p class="help">每行一条：<code>时间</code> 可写 <code>19:00-20:30</code> 或只写开始时间；<code>#科目</code> 选分类；<code>!高/!中/!低</code> 设优先级；<code>@每天/@每周</code> 设重复；<code>[x]</code> 表示已完成。粘贴 Obsidian 每日笔记「✅ Tasks」下的清单原样可导。</p>
-    <div class="btnrow"><button class="btn sm" id="md-x">取消</button><button class="btn sm pri" id="md-ok">导入</button></div>`);
+  openModal(`<h3>${T("导入 MD")} · ${fmtDate(date)}</h3>
+    <textarea class="ta" id="md-ta" placeholder="${T("- 08:30-10:00 数学分析习题 #数学 !高&#10;- [x] 07:30 晨跑 #其他&#10;- 背单词 #英语")}"></textarea>
+    <p class="help">${T("每行一条：<code>时间</code> 可写 <code>19:00-20:30</code> 或只写开始时间；<code>#科目</code> 选分类；<code>!高/!中/!低</code> 设优先级；<code>@每天/@每周</code> 设重复；<code>[x]</code> 表示已完成。粘贴 Obsidian 每日笔记「✅ Tasks」下的清单原样可导。")}</p>
+    <div class="btnrow"><button class="btn sm" id="md-x">${T("取消")}</button><button class="btn sm pri" id="md-ok">${T("导入")}</button></div>`);
   $("#md-x").onclick = closeModal;
   $("#md-ok").onclick = ()=>{
     const lines = $("#md-ta").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
@@ -2472,15 +2803,15 @@ function mdModal(date){
     purgeSample();
     for (const l of lines){ const t = parseLine(l, date); if (t){ db.tasks.push(t); n++; } }
     save(); closeModal(); renderCal(); renderToday(); updateNext();
-    toast(`已导入 ${n} 条`, fmtDate(date));
+    toast(TF("已导入 {n} 条", {n}), fmtDate(date));
   };
 }
 function copyTA(ta){
   ta.select();
   let ok = false;
   try{ ok = document.execCommand("copy"); }catch(e){}
-  if (!ok && navigator.clipboard) navigator.clipboard.writeText(ta.value).then(()=>toast("已复制"),()=>toast("复制失败","请手动全选复制",true));
-  else toast(ok?"已复制":"复制失败","请手动全选复制",ok?false:true);
+  if (!ok && navigator.clipboard) navigator.clipboard.writeText(ta.value).then(()=>toast(T("已复制")),()=>toast(T("复制失败"),T("请手动全选复制"),true));
+  else toast(ok?T("已复制"):T("复制失败"),T("请手动全选复制"),ok?false:true);
 }
 
 /* ================= 计时 ================= */
@@ -2499,7 +2830,7 @@ function timerLiveSec(date){
   return dstr(d)===date ? live : 0;
 }
 function catOptions(sel){
-  return cats().map((c,i)=>`<option value="${i}" ${i===sel?"selected":""}>${esc(c||"科目"+(i+1))}</option>`).join("");
+  return cats().map((c,i)=>`<option value="${i}" ${i===sel?"selected":""}>${esc(c||TF("科目{n}",{n:i+1}))}</option>`).join("");
 }
 function fillTimerSelects(){
   const t = tState();
@@ -2509,7 +2840,7 @@ function fillTimerSelects(){
 }
 $("#mode-tabs").addEventListener("click", e=>{
   const b = e.target.closest("button"); if (!b) return;
-  if (tState() && !tState().doneAt){ toast("计时进行中","先结束或暂停当前计时再切换模式",true); return; }
+  if (tState() && !tState().doneAt){ toast(T("计时进行中"),T("先结束或暂停当前计时再切换模式"),true); return; }
   mode = b.dataset.m;
   document.querySelectorAll("#mode-tabs button").forEach(x=>x.classList.toggle("on",x===b));
   $("#pomoinfo").hidden = mode!=="pomo";
@@ -2517,17 +2848,17 @@ $("#mode-tabs").addEventListener("click", e=>{
 });
 $("#pomoinfo").addEventListener("click", e=>{
   const b = e.target.closest("[data-pw]"); if (!b) return;
-  if (tState() && !tState().doneAt){ toast("计时进行中","先结束当前计时再改时长",true); return; }
+  if (tState() && !tState().doneAt){ toast(T("计时进行中"),T("先结束当前计时再改时长"),true); return; }
   db.settings.pw = +b.dataset.pw; save(); renderSettings();
-  toast("专注时长已设", `${db.settings.pw} 分钟${db.settings.pw===40?" · CSP 模式":""}`);
+  toast(T("专注时长已设"), TF("{n} 分钟",{n:db.settings.pw}) + (db.settings.pw===40?T(" · CSP 模式"):""));
 });
 function setTimerButtons(){
   const t = tState(), running = t && !t.doneAt;
   $("#t-start").hidden = !!running;
   $("#t-pause").hidden = !running;
   $("#t-finish").hidden = !running;
-  if (running && t.pausedAt){ $("#t-pause").innerHTML = "继续"; }
-  else $("#t-pause").innerHTML = "暂停";
+  if (running && t.pausedAt){ $("#t-pause").textContent = T("继续"); }
+  else $("#t-pause").textContent = T("暂停");
 }
 function renderReadout(){
   const s = timerElapsed();
@@ -2535,14 +2866,14 @@ function renderReadout(){
   const t = tState();
   $("#readout").classList.toggle("running", !!t && !t.doneAt && !t.pausedAt);
   const todaySec = db.sessions.filter(x=>x.date===todayStr()).reduce((a,x)=>a+x.sec,0) + timerLiveSec(todayStr());
-  $("#timer-sub").textContent = `今天已记录 ${fmtDur(todaySec)}`;
+  $("#timer-sub").textContent = TF("今天已记录 {t}", {t:fmtDur(todaySec)});
   if (t && !t.doneAt && t.mode==="pomo"){
     const len = (t.phase==="work"?db.settings.pw:db.settings.pr)*60000;
     const left = Math.max(0, Math.ceil((len - timerElapsed()*1000)/1000));
-    $("#phase-chip").textContent = t.phase==="work"?"学习":"休息";
+    $("#phase-chip").textContent = t.phase==="work"?T("学习"):T("休息");
     $("#phase-chip").className = "phase " + t.phase;
-    $("#round-chip").textContent = `第 ${t.round} 轮`;
-    $("#pomo-hint").textContent = `本段还剩 ${pad(Math.floor(left/60))}:${pad(left%60)}`;
+    $("#round-chip").textContent = TF("第 {n} 轮",{n:t.round});
+    $("#pomo-hint").textContent = TF("本段还剩 {t}",{t:`${pad(Math.floor(left/60))}:${pad(left%60)}`});
   }
 }
 $("#t-start").onclick = ()=>{
@@ -2550,7 +2881,7 @@ $("#t-start").onclick = ()=>{
   const t = {mode, cat:+$("#tf-cat").value, subj:$("#tf-subj").value.trim(), startTs:Date.now(), pausedAcc:0, pausedAt:0, phase:"work", round:1, doneAt:0};
   db.timer = t; save();
   setTimerButtons(); renderReadout(); renderToday();
-  if (mode==="pomo") toast("番茄钟开始",`专注 ${db.settings.pw} 分钟，加油`);
+  if (mode==="pomo") toast(T("番茄钟开始"),TF("专注 {n} 分钟，加油",{n:db.settings.pw}));
 };
 $("#t-pause").onclick = ()=>{
   const t = tState(); if (!t) return;
@@ -2564,12 +2895,12 @@ function finishTimer(auto){
   if (sec >= 60){
     const d = new Date(t.startTs);
     purgeSample();
-    db.sessions.push({id:uid(), cat:t.cat, subj:t.subj||cats()[t.cat]||"专注", startTs:t.startTs, endTs:Date.now(), sec, date:dstr(d)});
+    db.sessions.push({id:uid(), cat:t.cat, subj:t.subj||cats()[t.cat]||T("专注"), startTs:t.startTs, endTs:Date.now(), sec, date:dstr(d)});
     petEarn(sec);
   }
   db.timer = null; save();
   setTimerButtons(); renderReadout(); renderSessions(); renderToday(); renderStats?.();
-  if (sec >= 60) toast(auto?"番茄钟专注完成":"已记录", `${t.subj||cats()[t.cat]} · ${fmtDur(sec)}`);
+  if (sec >= 60) toast(auto?T("番茄钟专注完成"):T("已记录"), `${t.subj||cats()[t.cat]} · ${fmtDur(sec)}`);
   if (sec >= 60) buzz([24,60,24]);
 }
 $("#t-finish").onclick = ()=>finishTimer(0);
@@ -2580,18 +2911,18 @@ setInterval(()=>{
     const len = (t.phase==="work"?db.settings.pw:db.settings.pr)*60000;
     if (timerElapsed()*1000 >= len){
       if (t.phase==="work"){
-        beep(); buzz([24,60,24]); sysNotify("番茄钟：专注完成", `休息 ${db.settings.pr} 分钟`);
-        toast("专注完成，休息一下", `第 ${t.round} 轮 · 已记录 ${db.settings.pw} 分钟`);
+        beep(); buzz([24,60,24]); sysNotify(T("番茄钟：专注完成"), TF("休息 {n} 分钟",{n:db.settings.pr}));
+        toast(T("专注完成，休息一下"), TF("第 {n} 轮 · 已记录 {m} 分钟",{n:t.round, m:db.settings.pw}));
         const sec = db.settings.pw*60;
         const d = new Date(t.startTs);
         purgeSample();
-        db.sessions.push({id:uid(), cat:t.cat, subj:t.subj||cats()[t.cat]||"专注", startTs:t.startTs, endTs:Date.now(), sec, date:dstr(d)});
+        db.sessions.push({id:uid(), cat:t.cat, subj:t.subj||cats()[t.cat]||T("专注"), startTs:t.startTs, endTs:Date.now(), sec, date:dstr(d)});
         petEarn(sec);
         t.phase = "rest"; t.round++; t.startTs = Date.now(); t.pausedAcc = 0;
         renderSessions();
       } else {
-        beep(); buzz(18); sysNotify("番茄钟：休息结束", `开始第 ${t.round} 轮专注`);
-        toast("休息结束", `开始第 ${t.round} 轮专注`);
+        beep(); buzz(18); sysNotify(T("番茄钟：休息结束"), TF("开始第 {n} 轮专注",{n:t.round}));
+        toast(T("休息结束"), TF("开始第 {n} 轮专注",{n:t.round}));
         t.phase = "work"; t.startTs = Date.now(); t.pausedAcc = 0;
       }
       save();
@@ -2601,14 +2932,14 @@ setInterval(()=>{
 }, 1000);
 $("#mf-add").onclick = ()=>{
   const s = hm($("#mf-s").value), e = hm($("#mf-e").value);
-  if (!s || !e || e.h*60+e.m <= s.h*60+s.m){ toast("时间不对","结束时间要晚于开始时间",true); return; }
+  if (!s || !e || e.h*60+e.m <= s.h*60+s.m){ toast(T("时间不对"),T("结束时间要晚于开始时间"),true); return; }
   const d = new Date(); d.setHours(s.h,s.m,0,0);
   const sec = (e.h*60+e.m - s.h*60-s.m)*60;
   purgeSample();
   db.sessions.push({id:uid(), cat:+$("#mf-cat").value, subj:"", startTs:+d, endTs:+d+sec*1000, sec, date:todayStr()});
   petEarn(sec);
   save(); renderSessions(); renderToday();
-  toast("已补记", fmtDur(sec));
+  toast(T("已补记"), fmtDur(sec));
 };
 function renderSessions(){
   const list = db.sessions.filter(s=>s.date===todayStr()).sort((a,b)=>b.startTs-a.startTs);
@@ -2620,9 +2951,9 @@ function renderSessions(){
       <span class="subj">${esc(x.subj||"—")}</span>
       <span class="span mono">${pad(st.getHours())}:${pad(st.getMinutes())}–${pad(en.getHours())}:${pad(en.getMinutes())}</span>
       <span class="dur mono">${fmtDur(x.sec)}</span>
-      <button class="iconbtn" data-del aria-label="删除" style="width:24px;height:24px;"><svg class="i" style="width:14px;height:14px" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button>
+      <button class="iconbtn" data-del aria-label="${T("删除")}" style="width:24px;height:24px;"><svg class="i" style="width:14px;height:14px" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button>
     </div>`;
-  }).join("") || `<div class="empty">今天还没有记录——点左侧开始计时，或在下面补记</div>`;
+  }).join("") || `<div class="empty">${T("今天还没有记录——点左侧开始计时，或在下面补记")}</div>`;
 }
 $("#sess-list").addEventListener("click", e=>{
   const b = e.target.closest("[data-del]"); if (!b) return;
@@ -2657,7 +2988,7 @@ function renderStats(){
   const wkOcc = wk.flatMap(ds=>tasksOf(ds).map(t=>({t, ds})));
   const dn = wkOcc.filter(x=>isDone(x.t, x.ds)).length;
   tiles.push({lb:"本周完成", v:`${dn}/${wkOcc.length}`, u:"项"});
-  $("#tiles").innerHTML = tiles.map(t=>`<div class="card tile"><div class="lb">${t.lb}</div><div class="v">${t.v}<small>${t.u}</small></div></div>`).join("");
+  $("#tiles").innerHTML = tiles.map(t=>`<div class="card tile"><div class="lb">${T(t.lb)}</div><div class="v">${t.v}<small>${T(t.u)}</small></div></div>`).join("");
   $("#stats-sub").textContent = `${wk[0].slice(5).replace("-","/")} – ${wk[6].slice(5).replace("-","/")}`;
 
   /* 每日柱状图 */
@@ -2671,8 +3002,8 @@ function renderStats(){
       const today = ds===todayStr();
       const cap = (i===perDay.indexOf(Math.max(...perDay)) && perDay[i]>0) ? `<span class="cap mono">${fmtDurH(perDay[i])}h</span>` : "";
       return `<div class="wcol ${today?"today":""}">
-        <div class="bar ${perDay[i]?"":"zero"}" style="height:${Math.max(h,1.2)}%" data-tip="周${"一二三四五六日"[i]} · ${perDay[i]?fmtDur(perDay[i]):"无记录"}">${cap}</div>
-        <span class="lb">${"一二三四五六日"[i]}</span></div>`;
+        <div class="bar ${perDay[i]?"":"zero"}" style="height:${Math.max(h,1.2)}%" data-tip="${TF("周{d} · {t}",{d:WD_MF()[i], t:perDay[i]?fmtDur(perDay[i]):T("无记录")})}">${cap}</div>
+        <span class="lb">${WD_MF()[i]}</span></div>`;
     }).join("");
   box.querySelectorAll(".bar").forEach(b=>bindTip(b, b.dataset.tip));
 
@@ -2682,7 +3013,7 @@ function renderStats(){
   $("#cat-empty").hidden = perCat.length>0;
   const mx = Math.max(1, ...perCat.map(x=>x.sec));
   $("#catbars").innerHTML = perCat.map(x=>`<div class="catrow">
-      <span class="nm"><span class="dot" style="background:${colOf(x.i)}"></span>${esc(x.c||"科目"+(x.i+1))}</span>
+      <span class="nm"><span class="dot" style="background:${colOf(x.i)}"></span>${esc(x.c||TF("科目{n}",{n:x.i+1}))}</span>
       <span class="track"><i style="width:${x.sec/mx*100}%;background:${colOf(x.i)}"></i></span>
       <span class="val mono">${fmtDur(x.sec)}</span></div>`).join("");
 }
@@ -2691,8 +3022,8 @@ function renderStats(){
 function updateNext(){
   const n = nextTask();
   $("#nextup").innerHTML = n
-    ? `接下来<b>${esc(n.start)} · ${esc(n.title)}</b>`
-    : `今天没有更多安排<br><b style="color:var(--muted)">好好休息</b>`;
+    ? `${T("接下来")}<b>${esc(n.start)} · ${esc(n.title)}</b>`
+    : `${T("今天没有更多安排")}<br><b style="color:var(--muted)">${T("好好休息")}</b>`;
 }
 setInterval(()=>{
   const t = todayStr();
@@ -2706,8 +3037,8 @@ setInterval(()=>{
     if (nm >= st - db.settings.ahead){
       db.fired[t].push(task.id);
       beep();
-      sysNotify("学习提醒", `${task.start} ${task.title}`);
-      toast(`⏰ ${task.start} · ${task.title}`, db.settings.ahead && st>nm ? `提前 ${db.settings.ahead} 分钟提醒，还有 ${st-nm} 分钟开始` : "现在开始", true);
+      sysNotify(T("学习提醒"), `${task.start} ${task.title}`);
+      toast(`⏰ ${task.start} · ${task.title}`, db.settings.ahead && st>nm ? TF("提前 {a} 分钟提醒，还有 {m} 分钟开始",{a:db.settings.ahead, m:st-nm}) : T("现在开始"), true);
     }
   }
   save(); renderToday(); updateNext();
@@ -2727,8 +3058,8 @@ function hexToHsl(hex){
 const hsl=(h,s,l)=>`hsl(${Math.round(h)},${Math.round(s*100)}%,${Math.round(l*100)}%)`;
 function renderSw(sel, cur, presets, def, onPick){
   const box = $(sel);
-  box.innerHTML = presets.map(v=>`<button class="sw ${cur===v?"on":""}" data-v="${v}" style="background:${v||def}" aria-label="${v||"默认"}"></button>`).join("")
-    + `<input type="color" class="swcustom" value="${/^#[0-9a-f]{6}$/i.test(cur||"")?cur:def}" title="自定义颜色">`;
+  box.innerHTML = presets.map(v=>`<button class="sw ${cur===v?"on":""}" data-v="${v}" style="background:${v||def}" aria-label="${v||T("默认")}"></button>`).join("")
+    + `<input type="color" class="swcustom" value="${/^#[0-9a-f]{6}$/i.test(cur||"")?cur:def}" title="${T("自定义颜色")}">`;
   box.querySelectorAll(".sw").forEach(b=>b.onclick = ()=>{ onPick(b.dataset.v || ""); renderSettings(); });
   box.querySelector(".swcustom").oninput = e=> onPick(e.target.value);
 }
@@ -2774,13 +3105,14 @@ function renderStyleSw(){
   const box = $("#style-sw");
   if (!box) return;
   box.innerHTML = STYLE_DEFS.map(([v,n])=>
-    `<button class="stchip ${cur===v?"on":""}" data-v="${v}" aria-pressed="${cur===v}">${n}</button>`).join("");
+    `<button class="stchip ${cur===v?"on":""}" data-v="${v}" aria-pressed="${cur===v}">${T(n)}</button>`).join("");
   box.querySelectorAll(".stchip").forEach(b=>b.onclick = ()=>{
     if ((db.settings.style || "jz") === b.dataset.v) return;
     db.settings.style = b.dataset.v; save(); applyTheme(); renderSettings();
   });
 }
 function renderSettings(){
+  $("#s-lang").value = LANG;
   $("#s-ahead").value = String(db.settings.ahead);
   $("#s-sound").classList.toggle("on", db.settings.sound);
   $("#s-sound").setAttribute("aria-checked", db.settings.sound);
@@ -2804,12 +3136,17 @@ function renderSettings(){
   renderSw("#bg-sw", db.settings.bg, BG_PRESETS, "#F4F2EC", v=>{ db.settings.bg = v; save(); applyTheme(); });
   renderSw("#acc-sw", db.settings.acc, ACC_PRESETS, "#2F6D5F", v=>{ db.settings.acc = v; save(); applyTheme(); });
   $("#cat-edit").innerHTML = cats().map((c,i)=>
-    `<span class="catrow-edit"><input type="color" class="catcol" data-cc="${i}" value="${colOf(i)}" aria-label="科目${i+1}颜色">
-     <input class="catnameinp" data-ci="${i}" value="${esc(c)}" maxlength="8" aria-label="科目${i+1}">
-     <button class="iconbtn catdel" data-cd="${i}" aria-label="删除科目${i+1}"><svg class="i" style="width:15px;height:15px" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button></span>`).join("")
-    + `<button class="btn sm" id="cat-add">＋ 添加科目</button>`;
+    `<span class="catrow-edit"><input type="color" class="catcol" data-cc="${i}" value="${colOf(i)}" aria-label="${TF("科目{n}颜色",{n:i+1})}">
+     <input class="catnameinp" data-ci="${i}" value="${esc(c)}" maxlength="8" aria-label="${TF("科目{n}",{n:i+1})}">
+     <button class="iconbtn catdel" data-cd="${i}" aria-label="${TF("删除科目{n}",{n:i+1})}"><svg class="i" style="width:15px;height:15px" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button></span>`).join("")
+    + `<button class="btn sm" id="cat-add">${T("＋ 添加科目")}</button>`;
   $("#s-export").value = JSON.stringify(db);
 }
+$("#s-lang").onchange = e=>{
+  db.settings.lang = e.target.value === "en" ? "en" : "zh";
+  saveLocal();          /* 立即落盘再刷新: 防抖 save 在 reload 时会丢这次改动 */
+  location.reload();
+};
 $("#s-ahead").onchange = e=>{ db.settings.ahead = +e.target.value; save(); };
 $("#s-sound").onclick = e=>{
   db.settings.sound = !db.settings.sound; save(); renderSettings();
@@ -2825,11 +3162,11 @@ $("#s-petanim").onclick = e=>{
 };
 $("#s-notify").onclick = async ()=>{
   if (!db.settings.notify){
-    if (!("Notification" in window)){ toast("此环境不支持通知","页面内提醒仍然有效",true); return; }
+    if (!("Notification" in window)){ toast(T("此环境不支持通知"),T("页面内提醒仍然有效"),true); return; }
     let p = Notification.permission;
     if (p === "default"){ try{ p = await Notification.requestPermission(); }catch(e){} }
-    if (p === "granted"){ db.settings.notify = true; toast("通知已开启","页面不在前台时也会提醒"); }
-    else { toast("没有获得权限","浏览器地址栏的通知权限里允许即可",true); }
+    if (p === "granted"){ db.settings.notify = true; toast(T("通知已开启"),T("页面不在前台时也会提醒")); }
+    else { toast(T("没有获得权限"),T("浏览器地址栏的通知权限里允许即可"),true); }
   } else db.settings.notify = false;
   save(); renderSettings();
 };
@@ -2848,7 +3185,7 @@ $("#s-agentre").onclick = ()=>{
 };
 $("#cat-edit").addEventListener("change", e=>{
   const i = e.target.dataset.ci;
-  if (i!=null){ db.settings.cats[+i] = e.target.value.trim() || ("科目"+(+i+1)); save(); renderAll(); }
+  if (i!=null){ db.settings.cats[+i] = e.target.value.trim() || TF("科目{n}",{n:+i+1}); save(); renderAll(); }
 });
 $("#cat-edit").addEventListener("input", e=>{
   const cc = e.target.dataset.cc;
@@ -2862,7 +3199,7 @@ $("#cat-edit").addEventListener("click", e=>{
   const del = e.target.closest(".catdel");
   if (del){
     const d = +del.dataset.cd;
-    if (cats().length <= 1){ toast("至少保留一个科目", undefined, true); return; }
+    if (cats().length <= 1){ toast(T("至少保留一个科目"), undefined, true); return; }
     db.settings.cats.splice(d,1);
     if (db.settings.catCols) db.settings.catCols.splice(d,1);
     const last = cats().length - 1;
@@ -2870,37 +3207,37 @@ $("#cat-edit").addEventListener("click", e=>{
     db.tasks.forEach(t=>t.cat=remap(t.cat));
     db.sessions.forEach(s=>s.cat=remap(s.cat));
     save(); renderAll();
-    toast("已删除科目", "相关记录已并入「"+cats()[last]+"」");
+    toast(T("已删除科目"), TF("相关记录已并入「{c}」",{c:cats()[last]}));
     return;
   }
   if (e.target.closest("#cat-add")){
-    if (cats().length >= 10){ toast("科目最多 10 个", undefined, true); return; }
-    db.settings.cats.push("新科目");
+    if (cats().length >= 10){ toast(T("科目最多 10 个"), undefined, true); return; }
+    db.settings.cats.push(T("新科目"));
     if (db.settings.catCols) db.settings.catCols.push(CAT_POOL[cats().length % CAT_POOL.length]);
     save(); renderSettings();
   }
 });
 $("#s-copy").onclick = ()=>copyTA($("#s-export"));
-$("#s-refresh").onclick = ()=>{ $("#s-export").value = JSON.stringify(db); toast("已刷新"); };
+$("#s-refresh").onclick = ()=>{ $("#s-export").value = JSON.stringify(db); toast(T("已刷新")); };
 $("#s-import-btn").onclick = ()=>{
   try{
     const d = JSON.parse($("#s-import").value);
     if (!d || !Array.isArray(d.tasks) || !Array.isArray(d.sessions)) throw 0;
     db = d;
-    db.settings = Object.assign({ahead:10,sound:true,notify:false,haptic:true,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
+    db.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
     db.pet = fixPet(db.pet);
     db.fired = db.fired||{}; db.timer = db.timer||null;
     save(); renderAll();
-    toast("导入成功", `${db.tasks.length} 条日程 · ${db.sessions.length} 条记录`);
-  }catch(e){ toast("导入失败","内容不是有效的日课备份 JSON",true); }
+    toast(T("导入成功"), TF("{t} 条日程 · {s} 条记录",{t:db.tasks.length, s:db.sessions.length}));
+  }catch(e){ toast(T("导入失败"),T("内容不是有效的日课备份 JSON"),true); }
 };
 let clearArm = false;
 $("#s-clear").onclick = ()=>{
-  if (!clearArm){ clearArm = true; $("#s-clear").textContent = "再点一次确认清空"; setTimeout(()=>{ clearArm=false; $("#s-clear").textContent = "清空全部数据"; }, 4000); return; }
+  if (!clearArm){ clearArm = true; $("#s-clear").textContent = T("再点一次确认清空"); setTimeout(()=>{ clearArm=false; $("#s-clear").textContent = T("清空全部数据"); }, 4000); return; }
   db = seed(); db.sample = false; db.tasks = []; db.sessions = [];
   save(); renderAll(); renderSettings();
-  $("#s-clear").textContent = "清空全部数据"; clearArm = false;
-  toast("已清空", "所有日程与记录已删除");
+  $("#s-clear").textContent = T("清空全部数据"); clearArm = false;
+  toast(T("已清空"), T("所有日程与记录已删除"));
 };
 
 /* ================= 启动 ================= */
@@ -2908,7 +3245,7 @@ let lastDay = "";
 function tickClock(){
   const n = new Date();
   $("#clock").textContent = `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
-  $("#clockdate").textContent = `${n.getMonth()+1}月${n.getDate()}日 星期${CN_WD[n.getDay()]}`;
+  $("#clockdate").textContent = dateHead(n);
   const ds = todayStr();
   if (ds !== lastDay){ lastDay = ds; updatePlanInfo(); renderToday(); renderPet(); }
 }
