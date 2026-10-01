@@ -844,6 +844,8 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
         <p class="help" style="margin:4px 0 0;">让 Claude Code / kimi 这类 PC 端 AI 智能体读写你的日课：在 rike 仓库运行
           <code>node agent/rike-mcp.js</code> 保持不动，另执行 <code>claude mcp add rike -- node agent/rike-mcp.js</code>；
           然后对它说「看看我今天有什么安排」「帮我记 40 分钟专注」。本页开着时自动连接；桥只监听本机 127.0.0.1，数据不出这台电脑。</p>
+        <p class="help" style="margin:4px 0 0;">手机联动：改为运行 <code>node agent/rike-mcp.js --lan</code>，
+          手机浏览器打开控制台里打印的地址，输入 6 位配对码即成——手机和电脑用同一份数据，手机上加的日程电脑立刻可见。</p>
       </div>
       <div class="card sect">
         <h3>数据备份</h3>
@@ -959,11 +961,16 @@ function load(){
   }catch(e){ lsOK = false; return null; }
 }
 let saveT = null;
+function saveLocal(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
+  catch(e){ lsOK = false; $("#ls-banner").hidden = false; }
+}
 function save(){
   clearTimeout(saveT);
   saveT = setTimeout(()=>{
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
-    catch(e){ lsOK = false; $("#ls-banner").hidden = false; }
+    db.savedAt = Date.now();          /* 整库时间戳: 局域网 LWW 同步用 */
+    saveLocal();
+    if (HUB.on) hubPush();
   }, 250);
 }
 db = load() || seed();
@@ -1015,13 +1022,67 @@ async function agentSync(){
 }
 function agentState(){
   const el = $("#agent-state"); if (!el) return;
-  el.textContent = AGENT.ok
-    ? "已连接 · 127.0.0.1:" + AGENT.port + "（智能体可读写日课）"
+  el.textContent = AGENT.ok && HUB.on ? "已连接 · 智能体 + 局域网联动中"
+    : AGENT.ok ? "已连接 · 127.0.0.1:" + AGENT.port + "（智能体可读写日课）"
+    : HUB.on ? "已连接 · 局域网联动中（手机与电脑同一份数据）"
     : "未连接（本页开着时自动尝试连接本机智能体）";
-  el.style.color = AGENT.ok ? "var(--accent)" : "";
+  el.style.color = (AGENT.ok || HUB.on) ? "var(--accent)" : "";
 }
 setInterval(agentSync, 2500);
 setTimeout(agentSync, 60);
+
+/* ================= 局域网联动 hub(同源自检测: 页面由 hub 伺服时自动配对/同步) ================= */
+const HUB = { on:false, token:null };
+async function hubCall(p, body){
+  const r = await fetch(p, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
+  if (r.status === 403) throw new Error("auth");
+  return r.json();
+}
+async function hubSync(){
+  if (!HUB.token) return;
+  const j = await hubCall("/hub/sync", { token:HUB.token, savedAt:db.savedAt||0, db });
+  if (j.db && Array.isArray(j.db.tasks) && (j.db.savedAt||0) > (db.savedAt||0)){
+    db = j.db; saveLocal(); renderAll();
+    toast("已同步", "收到了其他设备的更新");
+  }
+}
+function hubPush(){
+  hubSync().catch(e=>{
+    if (e.message === "auth" && HUB.on){   /* hub 重启令牌失效 → 重新配对 */
+      HUB.on = false; HUB.token = null;
+      try{ localStorage.removeItem("rike-hub-token"); }catch(_){}
+      hubAskCode();
+    }
+  });
+}
+function hubAskCode(){
+  openModal(`<h3>连接这台电脑</h3>
+    <div class="field"><label for="hub-code">输入电脑上 rike 桥打印的 6 位配对码</label>
+    <input id="hub-code" class="mono" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:4px;"></div>
+    <div class="btnrow"><button class="btn sm" id="hub-x">取消</button><button class="btn sm pri" id="hub-ok">连接</button></div>`);
+  $("#hub-x").onclick = closeModal;
+  $("#hub-ok").onclick = async ()=>{
+    try{
+      const j = await hubCall("/hub/hello", { code: $("#hub-code").value.trim() });
+      if (!j.token) throw 0;
+      HUB.token = j.token; HUB.on = true;
+      try{ localStorage.setItem("rike-hub-token", j.token); }catch(e){}
+      closeModal(); agentState(); hubPush();
+    }catch(e){ toast("配对失败", "核对电脑控制台里的 6 位配对码", true); }
+  };
+}
+(async ()=>{
+  try{
+    const r = await fetch("/hub/info");
+    if (!r.ok) return;
+    if ((await r.json()).server !== "rike-hub") return;
+  }catch(e){ return; }
+  setInterval(()=>{ if (HUB.on) hubPush(); }, 5000);   /* 轮询常驻: 配对成功即开始工作 */
+  try{ HUB.token = localStorage.getItem("rike-hub-token"); }catch(e){}
+  if (!HUB.token) return hubAskCode();
+  try{ HUB.on = true; await hubSync(); agentState(); }
+  catch(e){ HUB.on = false; HUB.token = null; try{ localStorage.removeItem("rike-hub-token"); }catch(_){} hubAskCode(); }
+})();
 
 const cats = () => db.settings.cats;
 const colOf = i => db.settings.catCols?.[i] || CAT_POOL[i % CAT_POOL.length];

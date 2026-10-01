@@ -7,18 +7,31 @@
  *          POST /sync {db, results:[{id,text}]} → {ops:[{id,tool,args}]}
  *
  * 零依赖, node 16+。只监听本机回环, 数据不出本机。
- * 用法: node rike-mcp.js [--port 7676]
+ * 用法: node rike-mcp.js [--port 7676] [--lan [--lan-port 7777] [--page <index.html 路径>]]
+ *   --lan  再开一个局域网 hub(0.0.0.0): 手机浏览器打开 http://<本机IP>:<lan-port>
+ *          即用同一份数据; 首次连接输入控制台打印的 6 位配对码
  */
 "use strict";
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
+const crypto = require("crypto");
 
 const PORT = (() => {
   const i = process.argv.indexOf("--port");
   return i > 0 && +process.argv[i + 1] ? +process.argv[i + 1] : 7676;
 })();
 const SNAP = path.join(__dirname, "snapshot.json");
+const LAN = process.argv.includes("--lan");
+const LAN_PORT = (() => {
+  const i = process.argv.indexOf("--lan-port");
+  return i > 0 && +process.argv[i + 1] ? +process.argv[i + 1] : 7777;
+})();
+const PAGE = (() => {
+  const i = process.argv.indexOf("--page");
+  return path.resolve(i > 0 && process.argv[i + 1] ? process.argv[i + 1] : path.join(__dirname, "..", "index.html"));
+})();
 
 let db = null;        // 最新页面数据快照
 let lastSeen = 0;     // 页面最后心跳时间
@@ -150,8 +163,11 @@ const server = http.createServer((req, res) => {
         if (w){ clearTimeout(w.timer); delete waiters[r.id]; w.resolve(text(r.text)); }
       });
       if (j.db){
-        db = j.db; lastSeen = Date.now();
-        try { fs.writeFileSync(SNAP, JSON.stringify({ at: lastSeen, db })); } catch (e) {}
+        if (!db || (j.db.savedAt || 0) >= (db.savedAt || 0)){   /* 旧心跳不把库拉回旧版 */
+          db = j.db;
+          try { fs.writeFileSync(SNAP, JSON.stringify({ at: lastSeen, db })); } catch (e) {}
+        }
+        lastSeen = Date.now();
       }
       const out = { ops: ops.slice(0, 8) };
       ops = ops.slice(8);
@@ -165,6 +181,81 @@ server.on("error", e => console.error(`[rike-agent] 端口 ${PORT} 监听失败:
 
 /* 启动时恢复上次快照(只服务读类工具, 动作仍需页面在线) */
 try { db = JSON.parse(fs.readFileSync(SNAP, "utf8")).db; } catch (e) {}
+
+/* ---------- 局域网 hub(--lan): 手机/电脑同一份数据 ----------
+ * 页面由 hub 同源伺服(无 CORS); 整库 LWW: savedAt 新者胜, 落库同时镜像给
+ * MCP 侧(db + 快照), 手机上加的任务智能体立刻看得见。 */
+if (LAN) {
+  const ROOT = path.dirname(PAGE);
+  const STATIC = {
+    "/": [PAGE, "text/html; charset=utf-8"],
+    "/index.html": [PAGE, "text/html; charset=utf-8"],
+    "/sw.js": [path.join(ROOT, "sw.js"), "text/javascript"],
+    "/manifest.webmanifest": [path.join(ROOT, "manifest.webmanifest"), "application/manifest+json"],
+    "/icon-192.png": [path.join(ROOT, "icon-192.png"), "image/png"],
+    "/icon-512.png": [path.join(ROOT, "icon-512.png"), "image/png"],
+    "/icon-maskable-512.png": [path.join(ROOT, "icon-maskable-512.png"), "image/png"],
+    "/apple-touch-icon.png": [path.join(ROOT, "apple-touch-icon.png"), "image/png"],
+  };
+  let hubDb = db, hubSavedAt = (db && db.savedAt) || 0;   // 以恢复的快照起底
+  const pairCode = String(Math.floor(100000 + Math.random() * 900000));
+  const hubTokens = new Set();
+
+  function hubAdopt(newDb, at){
+    hubDb = newDb; hubSavedAt = at;
+    db = newDb; lastSeen = Date.now();                     // 镜像给 MCP 侧
+    try { fs.writeFileSync(SNAP, JSON.stringify({ at: lastSeen, db })); } catch (e) {}
+  }
+  function readBody(req, cap, cb){
+    let body = "", over = false;
+    req.on("data", c => { body += c; if (body.length > cap){ over = true; req.destroy(); } });
+    req.on("end", () => { if (over) return cb(null); try { cb(JSON.parse(body || "{}")); } catch (e) { cb(null); } });
+  }
+
+  const hub = http.createServer((req, res) => {
+    const u = req.url.split("?")[0];
+    if (req.method === "GET"){
+      const st = STATIC[u];
+      if (st && fs.existsSync(st[0])){
+        res.writeHead(200, { "Content-Type": st[1], "Cache-Control": "no-cache" });
+        return res.end(fs.readFileSync(st[0]));
+      }
+      if (u === "/hub/info"){ res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ server: "rike-hub", v: 1 })); }
+      res.writeHead(404); return res.end();
+    }
+    if (req.method !== "POST"){ res.writeHead(405); return res.end(); }
+    readBody(req, 4 << 20, j => {
+      if (!j){ res.writeHead(400); return res.end(); }
+      if (u === "/hub/hello"){
+        if (String(j.code || "").trim() !== pairCode){ res.writeHead(403); return res.end("{}"); }
+        const token = crypto.randomBytes(16).toString("hex");
+        hubTokens.add(token);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ token }));
+      }
+      if (u === "/hub/sync"){
+        if (!hubTokens.has(j.token)){ res.writeHead(403); return res.end("{}"); }
+        if ((j.savedAt || 0) > hubSavedAt && j.db && Array.isArray(j.db.tasks) && Array.isArray(j.db.sessions))
+          hubAdopt(j.db, j.savedAt);
+        const out = hubSavedAt > (j.savedAt || 0) && hubDb ? { db: hubDb } : { ok: 1 };
+        res.writeHead(200, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify(out));
+      }
+      res.writeHead(404); return res.end();
+    });
+  });
+  hub.listen(LAN_PORT, "0.0.0.0", () => {
+    const all = Object.values(os.networkInterfaces()).flat()
+      .filter(x => x && x.family === "IPv4" && !x.internal).map(x => x.address);
+    const ips = all.filter(ip => /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip));   // 只要真实局域网段
+    const list = ips.length ? ips : all;
+    console.error(`[rike-agent] 局域网 hub 已开启 (整库 LWW · 手机/电脑同一份数据)`);
+    list.forEach((ip, i) => console.error(`[rike-agent]   ${i ? "  或" : "手机浏览器打开"}: http://${ip}:${LAN_PORT}`));
+    console.error(`[rike-agent]   配对码: ${pairCode} (手机首次连接时输入, 重启进程会换)`);
+    console.error(`[rike-agent]   手机打不开? → Windows 防火墙允许 Node.js 在「专用网络」通过`);
+  });
+  hub.on("error", e => console.error(`[rike-agent] hub 端口 ${LAN_PORT} 监听失败: ${e.code}`));
+}
 
 /* ---------- stdio: MCP ---------- */
 let buf = "";
