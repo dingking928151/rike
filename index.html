@@ -1,6 +1,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>日课</title>
+<meta name="theme-color" content="#F4F2EC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151918" media="(prefers-color-scheme: dark)">
+<meta name="description" content="日程 · 计时 · 日历 · 统计 —— 数据只存在你自己设备上的学习规划器">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="日课">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600&family=DotGothic16&display=swap">
 <style>
 /* ---------- tokens ---------- */
@@ -2801,4 +2811,10 @@ tickClock(); setInterval(tickClock, 1000);
 renderAll();
 showView(view);
 if (tState() && !tState().doneAt && !tState().pausedAt) setTimerButtons();
+
+/* ---------- PWA: 只在安全上下文注册(https/localhost), file:// 与局域网 http 静默跳过 ---------- */
+try{
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1"))
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}catch(e){}
 </script>
