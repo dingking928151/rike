@@ -62,11 +62,17 @@ function streak(dbk){
 function petOf(dbk){
   const p = dbk.pet || {};
   const tot = (dbk.sessions || []).reduce((a, x) => a + (x.sec || 0), 0);
-  const st = p.custom ? 2 : tot < 2 * 3600 ? 0 : tot < 20 * 3600 ? 1 : 2;
+  const growth = typeof p.growth === "number" ? p.growth : tot;   /* 旧数据无 growth → 累计专注 */
+  const st = p.custom ? 2 : growth < 2 * 3600 ? 0 : growth < 20 * 3600 ? 1 : 2;
   let s = `宠物「${p.name || "小家伙"}」（${st === 0 ? "蛋" : st === 1 ? "幼年" : "成年"}）`
         + ` 存粮 ${p.food || 0} 颗 · 饱食 ${p.hunger || 0} · 心情 ${p.mood || 0}`;
-  if (st === 0) s += ` · 累计专注 ${fmtDurH(tot)}h / 2h 孵化`;
-  else if (st === 1) s += ` · ${fmtDurH(tot)}h / 20h 长大`;
+  if (st === 0) s += ` · 成长 ${fmtDurH(growth)}h / 2h 孵化`;
+  else if (st === 1) s += ` · 成长 ${fmtDurH(growth)}h / 20h 长大`;
+  if ((p.starve || 0) > 0){
+    const limRaw = +((dbk.settings || {}).petStarve);
+    const lim = Number.isFinite(limRaw) ? Math.max(0, Math.min(30, Math.round(limRaw))) : 3;
+    s += ` · 已挨饿 ${p.starve} 天` + (lim > 0 && !p.custom && st > 0 ? `（满 ${lim} 天退化）` : "");
+  }
   return s;
 }
 function summarize(dbk){
