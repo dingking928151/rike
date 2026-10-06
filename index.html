@@ -548,6 +548,25 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 /* ---------- 热力图 ---------- */
 .heatgrid{display:grid;grid-template-rows:repeat(7,11px);grid-auto-flow:column;gap:3px;justify-content:start;padding:4px 2px 2px;}
 .heatgrid i{width:11px;height:11px;border-radius:3px;background:var(--hair2);}
+/* ---------- AI 管家 ---------- */
+#butler-fab{position:fixed;right:16px;bottom:88px;z-index:60;width:46px;height:46px;border-radius:50%;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 45%,transparent);cursor:pointer}
+#butler-fab svg{width:22px;height:22px}
+#butler-fab:active{transform:scale(.92)}
+#butler-panel{position:fixed;right:16px;bottom:144px;z-index:60;width:min(360px,calc(100vw - 24px));max-height:min(520px,72vh);display:flex;flex-direction:column;background:var(--card);border:1px solid var(--hair);border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.22);overflow:hidden}
+.bthead{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--hair)}
+.bthead b{flex:1}
+#bt-close{border:none;background:none;font-size:18px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px}
+#bt-log{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+.btm{max-width:88%;padding:7px 10px;border-radius:12px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.btq{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.bta{align-self:flex-start;background:var(--card2);border-bottom-left-radius:4px}
+.bterr{align-self:flex-start;background:color-mix(in srgb,#e5484d 12%,var(--card));border-bottom-left-radius:4px}
+.btload{align-self:flex-start;color:var(--muted)}
+.btsug{align-self:flex-start;display:flex;flex-direction:column;gap:5px;max-width:92%}
+.btrow{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--hair)}
+.btrow textarea{flex:1;resize:none;font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--card);color:var(--ink)}
+#bt-send{white-space:nowrap}
+#bt-note{padding:0 12px 8px;margin:0;font-size:11px}
 /* ---------- modal ---------- */
 .overlay{
   position:fixed;inset:0;z-index:60;background:rgba(20,24,23,.45);
@@ -965,6 +984,14 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 <div id="toasts" aria-live="polite"></div>
 <div id="tip" hidden></div>
 
+<button id="butler-fab" hidden aria-label="AI 管家"><svg class="i" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2.5l1.2 3.1 3.1 1.2-3.1 1.2L10 11.1 8.8 8 5.7 6.8l3.1-1.2L10 2.5z"/><path d="M15.5 11l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" opacity=".7"/></svg></button>
+<div id="butler-panel" hidden>
+  <div class="bthead"><b>AI 管家</b><span class="chip mono" id="bt-model"></span><button id="bt-close" aria-label="关闭">×</button></div>
+  <div id="bt-log"></div>
+  <div class="btrow"><textarea id="bt-in" rows="1" placeholder="问问管家：这周学得怎么样？"></textarea><button class="btn sm pri" id="bt-send">发送</button></div>
+  <p class="help" id="bt-note">提问与日程摘要只发送给你配置的服务商</p>
+</div>
+
 <div class="overlay" id="overlay" hidden>
   <div class="modal" role="dialog" aria-modal="true" id="modal"></div>
 </div>
@@ -1305,6 +1332,27 @@ const I18N = { en: {
   "开发者": "Developer",
   "开发者模式": "Developer mode",
   "插件页显示实验插件与诊断信息": "Shows beta plugins and diagnostics on the Plugin page",
+  "AI 管家": "AI Butler",
+  "接入大模型 API，看得见日程与统计；建议给成速记，点「采用」才写入": "Connect an LLM API that sees your schedule and stats; suggestions arrive as quick-add lines you tap to adopt",
+  "配置": "Configure",
+  "AI 管家 · 配置": "AI Butler · Setup",
+  "服务商": "Provider",
+  "API 地址": "API base URL",
+  "模型": "Model",
+  "提问时附带日程摘要（不发摘要则只是普通对话）": "Attach a schedule snapshot to each question (off = plain chat)",
+  "Key 只存在本机浏览器；提问与摘要只发送给你配置的服务商。": "The key stays in this browser; questions and the snapshot go only to the provider you configure.",
+  "测试连接": "Test connection",
+  "连接中…": "Connecting…",
+  "连接正常": "Connection OK",
+  "返回为空": "Empty reply",
+  "连接失败": "Connection failed",
+  "已保存": "Saved",
+  "问问管家：这周学得怎么样？": "Ask the butler: how did this week go?",
+  "发送": "Send",
+  "提问与日程摘要只发送给你配置的服务商": "Questions and the snapshot go only to your provider",
+  "配置不完整": "Setup incomplete",
+  "先填 API 地址、Key 与模型": "Fill in the base URL, key and model first",
+  "已采用": "Adopted",
 }};
 function T(s){ return LANG === "en" && Object.prototype.hasOwnProperty.call(I18N.en, s) ? I18N.en[s] : s; }
 function TF(s, v){ let o = T(s); if (v) for (const k in v) o = o.split("{"+k+"}").join(v[k]); return o; }
@@ -1381,7 +1429,7 @@ function seed(){
       S(2,"GCN 预热 · 图表示基础",...hr(dstr(y1),15,30,50),dstr(y1)),
       S(3,"英语精读",...hr(t,8,10,25),t),
     ],
-    settings: {lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""},
+    settings: {lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""},
     pet: petDefault(),
     timer: null,
     fired: {}
@@ -1393,7 +1441,7 @@ function load(){
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.tasks)) return null;
-    d.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
+    d.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
     d.sessions = d.sessions||[]; d.fired = d.fired||{}; d.timer = d.timer||null;
     d.pet = fixPet(d.pet);
     return d;
@@ -2476,6 +2524,7 @@ const MOD_ICONS = {
   pet: '<svg viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="6" r="1.7"/><circle cx="13" cy="6" r="1.7"/><circle cx="4" cy="10" r="1.5"/><circle cx="16" cy="10" r="1.5"/><path d="M10 10.5c2.8 0 4.6 1.9 4.6 3.7 0 1.3-1 2.1-2.2 2.1-.9 0-1.6-.4-2.4-.4s-1.5.4-2.4.4c-1.2 0-2.2-.8-2.2-2.1 0-1.8 1.8-3.7 4.6-3.7z"/></svg>',
   desk: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7.6" stroke-dasharray="2.8 2.4"/><circle cx="8.4" cy="8.4" r="1" fill="currentColor" stroke="none"/><circle cx="11.6" cy="8.4" r="1" fill="currentColor" stroke="none"/><circle cx="6.6" cy="10.7" r=".9" fill="currentColor" stroke="none"/><circle cx="13.4" cy="10.7" r=".9" fill="currentColor" stroke="none"/><path d="M10 11.6c1.6 0 2.7 1.1 2.7 2.2 0 .8-.6 1.3-1.3 1.3-.5 0-1-.3-1.4-.3s-.9.3-1.4.3c-.7 0-1.3-.5-1.3-1.3 0-1.1 1.1-2.2 2.7-2.2z" fill="currentColor" stroke="none"/></svg>',
   heat: '<svg viewBox="0 0 20 20" fill="currentColor"><rect x="3" y="3" width="4" height="4" rx="1" opacity=".3"/><rect x="8" y="3" width="4" height="4" rx="1" opacity=".55"/><rect x="13" y="3" width="4" height="4" rx="1"/><rect x="3" y="8" width="4" height="4" rx="1" opacity=".55"/><rect x="8" y="8" width="4" height="4" rx="1"/><rect x="13" y="8" width="4" height="4" rx="1" opacity=".55"/><rect x="3" y="13" width="4" height="4" rx="1"/><rect x="8" y="13" width="4" height="4" rx="1" opacity=".3"/></svg>',
+  butler: '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2.5l1.2 3.1 3.1 1.2-3.1 1.2L10 11.1 8.8 8 5.7 6.8l3.1-1.2L10 2.5z"/><path d="M15.5 11l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" opacity=".7"/><path d="M5 12.5l.6 1.5 1.5.6-1.5.6L5 16.7l-.6-1.5-1.5-.6 1.5-.6.6-1.5z" opacity=".5"/></svg>',
 };
 const MODS = [
   { id:"pet", ver:"1.2.0", exp:false, deps:[], icon:MOD_ICONS.pet,
@@ -2495,6 +2544,12 @@ const MODS = [
     desc:"统计页显示过去 12 周的专注热力图",
     on:()=>db.settings.heatmap === true,
     set:v=>{ db.settings.heatmap = v; } },
+  { id:"butler", ver:"0.1.0", exp:true, deps:[], icon:MOD_ICONS.butler, cfg:true,
+    name:"AI 管家",
+    desc:"接入大模型 API，看得见日程与统计；建议给成速记，点「采用」才写入",
+    on:()=>db.settings.butler === true,
+    set:v=>{ db.settings.butler = v; },
+    clearData:()=>{ db.settings.butlerCfg = null; BUTLER.log = []; } },
 ];
 const modById = id => MODS.find(m=>m.id===id);
 function modCard(m){
@@ -2510,6 +2565,7 @@ function modCard(m){
     </div>
     <div class="modfoot">
       ${m.deps.length?`<span class="chip">${TF("依赖 · {n}",{n:T(modById(m.deps[0]).name)})}</span>`:""}
+      ${m.cfg?`<button class="btn sm modcfg">${T("配置")}</button>`:""}
       ${m.clearData?`<button class="btn sm warn modclear">${T("清除数据")}</button>`:""}
     </div>
   </div>`;
@@ -2547,6 +2603,7 @@ function modSet(m, v){
   save(); applyPetUI(); renderMods();
   if (m.id === "pet" && m.on()) renderPet();
   if (m.id === "heat") renderStats();
+  if (m.id === "butler") applyButler();
 }
 $("#v-mods").addEventListener("click", e=>{
   const card = e.target.closest(".modcard");
@@ -2554,6 +2611,8 @@ $("#v-mods").addEventListener("click", e=>{
   const m = modById(card.dataset.id);
   const act = e.target.closest(".modact");
   if (act){ modSet(m, !m.on()); return; }
+  const cg = e.target.closest(".modcfg");
+  if (cg){ if (m.id === "butler") openButlerCfg(); return; }
   const clr = e.target.closest(".modclear");
   if (clr){
     if (card.dataset.arm !== "1"){       /* 二次确认, 4 秒后复原 */
@@ -2571,6 +2630,172 @@ $("#v-mods").addEventListener("click", e=>{
 });
 $("#go-mods").onclick = ()=>showView("mods");
 $("#diag-copy").onclick = ()=>copyTA($("#diag-json"));
+
+/* ================= AI 管家 (实验插件): OpenAI 兼容 API, 快照问答 + 建议采用 ================= */
+const BUTLER_PRESETS = [
+  {n:"DeepSeek", base:"https://api.deepseek.com/v1", model:"deepseek-chat"},
+  {n:"Kimi (月之暗面)", base:"https://api.moonshot.cn/v1", model:"moonshot-v1-8k"},
+  {n:"智谱 GLM", base:"https://open.bigmodel.cn/api/paas/v4", model:"glm-4-flash"},
+  {n:"通义千问", base:"https://dashscope.aliyuncs.com/compatible-mode/v1", model:"qwen-plus"},
+  {n:"OpenAI", base:"https://api.openai.com/v1", model:"gpt-4o-mini"},
+  {n:"Ollama 本机", base:"http://127.0.0.1:11434/v1", model:"qwen2.5:7b"},
+  {n:"自定义", base:"", model:""},
+];
+const BUTLER = { busy:false, log:[] };   /* log: {q} | {a, err, sug:[{line, used}]} */
+function butlerOn(){ return db.settings.butler === true; }
+function butlerCfg(){ return db.settings.butlerCfg || {base:"",key:"",model:"",snap:true}; }
+function applyButler(){
+  const fab = $("#butler-fab");
+  if (!fab) return;
+  fab.hidden = !butlerOn();
+  fab.setAttribute("aria-label", T("AI 管家"));
+  if (!butlerOn()) $("#butler-panel").hidden = true;
+}
+async function butlerChat(msgs, cfg, max){
+  const c = cfg || butlerCfg();
+  const r = await fetch(c.base.replace(/\/+$/,"") + "/chat/completions", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + c.key },
+    body: JSON.stringify({ model:c.model, messages:msgs, stream:false, max_tokens:max||1024 })
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json();
+  return j.choices?.[0]?.message?.content || "";
+}
+function openButlerCfg(){
+  const c = butlerCfg();
+  openModal(`
+    <h3>${T("AI 管家 · 配置")}</h3>
+    <div class="mgrid">
+      <div class="field full"><label for="bt-preset">${T("服务商")}</label>
+        <select id="bt-preset">${BUTLER_PRESETS.map((p,i)=>`<option value="${i}">${p.n}</option>`).join("")}</select></div>
+      <div class="field full"><label for="bt-base">${T("API 地址")}</label><input class="mono" id="bt-base" value="${esc(c.base)}" placeholder="https://api.deepseek.com/v1"></div>
+      <div class="field full"><label for="bt-key">${T("API Key")}</label><input class="mono" id="bt-key" type="password" value="${esc(c.key)}" autocomplete="off" placeholder="sk-…"></div>
+      <div class="field full"><label for="bt-cfg-model">${T("模型")}</label><input class="mono" id="bt-cfg-model" value="${esc(c.model)}" placeholder="deepseek-chat"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-size:13px;"><input type="checkbox" id="bt-snap" ${c.snap!==false?"checked":""}> ${T("提问时附带日程摘要（不发摘要则只是普通对话）")}</label>
+    <p class="help">${T("Key 只存在本机浏览器；提问与摘要只发送给你配置的服务商。")}</p>
+    <div class="btnrow">
+      <button class="btn sm" id="bt-test">${T("测试连接")}</button>
+      <span class="help" id="bt-testout"></span>
+      <button class="btn sm" id="bt-cancel">${T("取消")}</button>
+      <button class="btn sm pri" id="bt-save">${T("保存")}</button>
+    </div>`);
+  const pi = BUTLER_PRESETS.findIndex(p=>p.base && p.base === c.base);
+  $("#bt-preset").value = String(pi > -1 ? pi : BUTLER_PRESETS.length - 1);
+  $("#bt-preset").onchange = ()=>{
+    const p = BUTLER_PRESETS[+$("#bt-preset").value];
+    if (p.base){ $("#bt-base").value = p.base; $("#bt-cfg-model").value = p.model; }
+  };
+  $("#bt-cancel").onclick = closeModal;
+  $("#bt-save").onclick = ()=>{
+    db.settings.butlerCfg = { base:$("#bt-base").value.trim(), key:$("#bt-key").value.trim(),
+      model:$("#bt-cfg-model").value.trim(), snap:$("#bt-snap").checked };
+    save(); closeModal(); applyButler(); renderButler();
+    toast(T("已保存"), db.settings.butlerCfg.model);
+  };
+  $("#bt-test").onclick = async ()=>{
+    const out = $("#bt-testout");
+    out.textContent = T("连接中…");
+    try{
+      const c2 = { base:$("#bt-base").value.trim(), key:$("#bt-key").value.trim(), model:$("#bt-cfg-model").value.trim() };
+      const r = await butlerChat([{role:"user", content:"ping"}], c2, 8);
+      out.textContent = r ? T("连接正常") : T("返回为空");
+    }catch(e){ out.textContent = T("连接失败") + " · " + String(e.message||e).slice(0,80); }
+  };
+}
+$("#butler-fab").onclick = ()=>{
+  const p = $("#butler-panel");
+  p.hidden = !p.hidden;
+  if (!p.hidden){ renderButler(); $("#bt-in").focus(); }
+};
+$("#bt-close").onclick = ()=>{ $("#butler-panel").hidden = true; };
+function butlerSys(){
+  return LANG === "en"
+    ? "You are the study butler inside 'Rike', a study planner. Answer briefly (within 3 sentences). You will see a snapshot of the user's schedule and stats. When the user wants help planning tasks, end your reply with a ```rike fenced block, one quick-add line per task (e.g. 19:00-20:30 Math review #math !high), at most 5 lines. Reply in English."
+    : "你是「日课」里的学习管家，回答尽量简短（三句以内）。你会看到用户日程与统计的摘要。当用户需要帮忙安排日程时，在回答最后用 ```rike 代码块给出建议，每行一条速记（例：19:00-20:30 数学分析 #数学 !高），最多 5 条。用中文回答。";
+}
+function butlerSnap(){
+  try{
+    const wk = weekRange();
+    const perDay = wk.map(ds => db.sessions.filter(s=>s.date===ds).reduce((a,x)=>a+x.sec,0));
+    const total = perDay.reduce((a,b)=>a+b,0);
+    const perCat = cats().map((c,i)=>({c, sec: db.sessions.filter(s=>wk.includes(s.date)&&s.cat===i).reduce((a,x)=>a+x.sec,0)}))
+      .filter(x=>x.sec>0).sort((a,b)=>b.sec-a.sec).slice(0,3);
+    const today = todayStr();
+    const tl = tasksOf(today).map(t=>`${t.start?t.start+" ":""}${t.title}${(t.done||isDone(t,today))?"[已完成]":""}`);
+    const miles = (db.settings.miles||"").split("\n").map(s=>s.trim()).filter(Boolean).slice(0,2);
+    const L = [];
+    L.push(`今日日程(${today}): ${tl.length ? tl.join("；") : "无"}`);
+    L.push(`本周专注: 累计${fmtDurH(total)}h，日均${total?fmtDurH(total/7):0}h${perCat.length?"，主要科目: "+perCat.map(x=>`${x.c} ${fmtDurH(x.sec)}h`).join("、"):""}`);
+    L.push(`连续打卡: ${streak()} 天`);
+    if (miles.length) L.push(`近期里程碑: ${miles.join("；")}`);
+    if (petOn()) L.push(`宠物: ${db.pet.name}（${petStage()}阶段）`);
+    return "【数据摘要】\n" + L.join("\n");
+  }catch(e){ return ""; }
+}
+async function butlerAsk(q){
+  const cfg = butlerCfg();
+  if (!cfg.base || !cfg.key || !cfg.model){ toast(T("配置不完整"), T("先填 API 地址、Key 与模型"), true); openButlerCfg(); return; }
+  BUTLER.log.push({ q });
+  BUTLER.busy = true;
+  renderButler();
+  try{
+    const snap = cfg.snap !== false ? butlerSnap() + "\n\n" : "";
+    const hist = BUTLER.log.slice(-7, -1).flatMap(m => m.q ? [{role:"user",content:m.q}] : m.a ? [{role:"assistant",content:m.a}] : []);
+    const a = (await butlerChat([{role:"system",content:butlerSys()}, ...hist, {role:"user",content:snap+q}])).replace(/\r/g,"");
+    const sug = [];
+    const blk = /```rike\n([\s\S]*?)```/.exec(a);
+    const text = a.replace(/```rike\n[\s\S]*?```/g, "").trim();
+    if (blk) for (const line of blk[1].split("\n")){ const s2 = line.trim(); if (s2) sug.push({ line:s2, used:false }); }
+    BUTLER.log.push({ a:text, sug });
+  }catch(e){
+    BUTLER.log.push({ a:"", err:String(e.message||e) });
+  }
+  BUTLER.busy = false;
+  renderButler();
+}
+function butlerAdopt(i, j){
+  const m = BUTLER.log[i];
+  if (!m || !m.sug || !m.sug[j] || m.sug[j].used) return;
+  const t = parseLine(m.sug[j].line);
+  if (!t){ toast(T("没看懂这一条"), m.sug[j].line, true); return; }
+  purgeSample(); db.tasks.push(t); save();
+  renderToday(); renderCal(); updateNext();
+  m.sug[j].used = true;
+  renderButler();
+  toast(T("已添加"), `${t.start||T("随时")} · ${t.title}`);
+}
+function renderButler(){
+  const log = $("#bt-log"); if (!log) return;
+  $("#bt-model").textContent = butlerCfg().model || "";
+  let html = "";
+  BUTLER.log.forEach((m, i)=>{
+    if (m.q) html += `<div class="btm btq">${esc(m.q)}</div>`;
+    else if (m.err) html += `<div class="btm bterr">${T("连接失败")} · ${esc(m.err).slice(0,120)}</div>`;
+    else {
+      html += `<div class="btm bta">${esc(m.a)}</div>`;
+      if (m.sug && m.sug.length) html += `<div class="btsug">${m.sug.map((s2,j)=>
+        `<button class="btn sm ${s2.used?"":"pri"}" data-i="${i}" data-j="${j}" ${s2.used?"disabled":""}>${s2.used?T("已采用")+" · "+esc(s2.line):"+ "+esc(s2.line)}</button>`).join("")}</div>`;
+    }
+  });
+  if (BUTLER.busy) html += `<div class="btm btload">…</div>`;
+  log.innerHTML = html;
+  log.scrollTop = log.scrollHeight;
+}
+$("#bt-log").addEventListener("click", e=>{
+  const b = e.target.closest(".btsug button"); if (!b) return;
+  butlerAdopt(+b.dataset.i, +b.dataset.j);
+});
+$("#bt-send").onclick = ()=>{
+  const v = $("#bt-in").value.trim();
+  if (!v || BUTLER.busy) return;
+  $("#bt-in").value = "";
+  butlerAsk(v);
+};
+$("#bt-in").addEventListener("keydown", e=>{
+  if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); $("#bt-send").click(); }
+});
 
 /* ================= 通用 UI ================= */
 function toast(title, sub, warn){
@@ -3582,6 +3807,7 @@ function tickClock(){
 function renderAll(){
   applyTheme();
   applyPetUI();
+  applyButler();
   renderToday(); renderCal(); renderSessions(); renderStats(); renderSettings(); renderPet(); renderMods(); updateNext(); updatePlanInfo(); setTimerButtons(); renderReadout();
 }
 fillTimerSelects();
