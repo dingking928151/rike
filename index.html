@@ -585,6 +585,15 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
   #nowbar-acts{position:absolute;top:calc(100% + 6px);left:0;right:0;border:1px solid var(--hair);border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.18)}
 }
 body.nowbar-on #butler-fab{bottom:142px}
+/* ---------- 滞留补办卡 ---------- */
+.stuckcard{border:1px dashed var(--hair);border-radius:12px;margin-bottom:10px;background:var(--card2);}
+.stuckhead{display:flex;width:100%;align-items:center;gap:7px;padding:9px 12px;border:0;background:none;color:var(--ink2);font:inherit;font-size:13px;text-align:left;}
+.stuckhead .n{color:var(--danger);font-weight:600;}
+.stuckhead svg{margin-left:auto;flex:none;transition:transform .2s;}
+.stuckcard.open .stuckhead svg{transform:rotate(180deg);}
+.stucklist{padding:2px 10px 8px;display:flex;flex-direction:column;gap:4px;}
+.stucklist .trow{background:var(--card);border-radius:10px;padding:6px 10px;}
+.rchip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
 /* ---------- modal ---------- */
 .overlay{
   position:fixed;inset:0;z-index:60;background:rgba(20,24,23,.45);
@@ -741,6 +750,7 @@ body.nowbar-on #butler-fab{bottom:142px}
         <div class="sub" id="stats-sub"></div>
       </div>
       <div class="tiles" id="tiles"></div>
+      <div class="progress-row" id="wgoal-row" style="margin:2px 0 14px;"></div>
       <div class="statgrid">
         <div class="card sect">
           <h3>本周每日时长</h3>
@@ -939,6 +949,10 @@ body.nowbar-on #butler-fab{bottom:142px}
         <div class="setrow">
           <div class="lab"><b>每日目标</b><span>小时/天，今日页按此画目标进度条</span></div>
           <input class="num" id="s-goal" type="number" min="1" max="14" step="0.5" value="4">
+        </div>
+        <div class="setrow">
+          <div class="lab"><b>每周目标</b><span>小时/周，统计页按此画周进度条</span></div>
+          <input class="num" id="s-wgoal" type="number" min="1" max="70" step="0.5" value="20">
         </div>
         <div class="setrow" style="display:block;">
           <div class="lab" style="margin-bottom:8px;"><b>里程碑</b><span>每行一条「日期 事项」，最近的两条会显示在侧栏倒计时</span></div>
@@ -1395,6 +1409,14 @@ const I18N = { en: {
   "到点了": "Time to start",
   "忽略": "Skip",
   "开始记录": "Start logging",
+  "前几天还有 {n} 项没做": "{n} unfinished from earlier days",
+  "顺延到今天": "Move to today", "已顺延到今天": "Moved to today",
+  "放弃": "Drop", "已放弃": "Dropped",
+  "改期": "Reschedule", "已改期": "Rescheduled",
+  "今天": "Today", "明天": "Tomorrow", "后天": "Day after tomorrow", "下周同一天": "Same day next week",
+  "重复任务改期会改变其生效日": "Rescheduling a repeating task shifts its effective day",
+  "每周目标": "Weekly goal", "周目标": "Week goal",
+  "小时/周，统计页按此画周进度条": "hours/week — the stats page tracks weekly progress against it",
   "配置不完整": "Setup incomplete",
   "先填 API 地址、Key 与模型": "Fill in the base URL, key and model first",
   "已采用": "Adopted",
@@ -1474,7 +1496,7 @@ function seed(){
       S(2,"GCN 预热 · 图表示基础",...hr(dstr(y1),15,30,50),dstr(y1)),
       S(3,"英语精读",...hr(t,8,10,25),t),
     ],
-    settings: {lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""},
+    settings: {lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""},
     pet: petDefault(),
     timer: null,
     fired: {}
@@ -1486,7 +1508,7 @@ function load(){
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.tasks)) return null;
-    d.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
+    d.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
     d.sessions = d.sessions||[]; d.fired = d.fired||{}; d.timer = d.timer||null;
     d.pet = fixPet(d.pet);
     return d;
@@ -2982,6 +3004,7 @@ function purgeSample(){
   db.sample = false;
   $("#sample-banner").hidden = true;
 }
+let stuckOpen = false;   /* 补办卡展开态 (纯 UI 状态, 不落库) */
 function renderToday(){
   const t = todayStr();
   const ts = tasksOf(t).sort((a,b)=>(minsOf(a.start)??1e9)-(minsOf(b.start)??1e9) || (minsOf(a.end)??1e9)-(minsOf(b.end)??1e9));
@@ -3013,13 +3036,31 @@ function renderToday(){
         <span class="title">${esc(x.title)}</span>
         ${rep}${active?`<span class="chip nowchip">${T("进行中")}</span>`:""}${late?`<span class="chip" style="color:var(--danger)">${T("已过期")}</span>`:""}${pri}
         <span class="acts">
+          <button class="iconbtn" data-act="rdate" aria-label="${T("改期")}"><svg class="i" viewBox="0 0 20 20"><path d="M4.5 5.5h11v10h-11zM4.5 8.5h11M7 3.5v3M13 3.5v3"/></svg></button>
           <button class="iconbtn" data-act="edit" aria-label="${T("编辑")}"><svg class="i" viewBox="0 0 20 20"><path d="M13.5 3.5l3 3L7.5 15.5H4.5v-3z"/></svg></button>
           <button class="iconbtn" data-act="del" aria-label="${T("删除")}"><svg class="i" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6.5 6l.8 10.5h5.4L13.5 6M9 9v4.5M11 9v4.5"/></svg></button>
         </span>
       </div>`;
     }).join("") + "</div>";
   }
-  $("#today-list").innerHTML = html || `<div class="empty">${T("今天还没有日程——在上面输入框速记一条，或点「详细」")}</div>`;
+  /* 滞留补办卡: 过期未做的非重复任务 (示例/重复/已完成都不算) */
+  const stuck = db.tasks.filter(x=>!x.rep && !x.done && !x.s && x.date && x.date < t).sort((a,b)=>a.date<b.date?-1:1);
+  let shtml = "";
+  if (stuck.length){
+    shtml = `<div class="stuckcard ${stuckOpen?"open":""}" id="stuck-card">
+      <button class="stuckhead" id="stuck-head" aria-expanded="${stuckOpen}">${TF("前几天还有 {n} 项没做", {n:stuck.length})}<span class="n mono">${stuck.length}</span>
+        <svg class="i" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8l5 5 5-5"/></svg></button>
+      <div class="stucklist" id="stuck-list" ${stuckOpen?"":"hidden"}>` +
+      stuck.map(x=>`<div class="trow" data-id="${x.id}">
+        <span class="time mono">${x.date.slice(5)}</span>
+        <span class="stripe" style="background:${colOf(x.cat)}"></span>
+        <span class="title">${esc(x.title)}</span>
+        <span class="acts">
+          <button class="iconbtn" data-act="adopt" aria-label="${T("顺延到今天")}"><svg class="i" viewBox="0 0 20 20"><path d="M4 10h10M10 5l5 5-5 5"/></svg></button>
+          <button class="iconbtn" data-act="drop" aria-label="${T("放弃")}"><svg class="i" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6.5 6l.8 10.5h5.4L13.5 6"/></svg></button>
+        </span></div>`).join("") + `</div></div>`;
+  }
+  $("#today-list").innerHTML = (shtml + html) || `<div class="empty">${T("今天还没有日程——在上面输入框速记一条，或点「详细」")}</div>`;
 
   const wk = weekRange(), winfo = weekInfo();
   const wstrip = `<div class="weekstrip">` + wk.map((ds,i)=>{
@@ -3034,6 +3075,7 @@ function renderToday(){
     `<div class="statmini"><span>${T("已记录专注")}</span><b class="mono">${fmtDur(todaySec)}</b></div>`,
     `<div class="statmini"><span>${TF("今日目标 {n} 小时", {n:db.settings.goal})}</span><b class="mono">${gp}%</b></div>`,
     `<div class="progress-row" style="margin-top:2px;"><div class="meter"><i style="width:${gp}%"></i></div></div>`,
+    `<div class="statmini"><span>${T("周目标")}</span><b class="mono">${fmtDurH(db.sessions.filter(s=>wk.includes(s.date)).reduce((a,b)=>a+b.sec,0))}/${db.settings.wgoal||20}h · ${Math.min(100,Math.round(db.sessions.filter(s=>wk.includes(s.date)).reduce((a,b)=>a+b.sec,0)/((db.settings.wgoal||20)*3600)*100))}%</b></div>`,
     `<div class="statmini" style="margin-top:4px;"><span>${T("今日计划时长")}</span><b class="mono">${planMin?fmtDur(planMin*60):"—"}</b></div>`,
     `<div class="statmini"><span>${T("待完成")}</span><b class="mono">${TF("{n} 项", {n:ts.length-done})}</b></div>`,
   ];
@@ -3050,11 +3092,15 @@ function nextTask(){
     .sort((a,b)=>minsOf(a.start)-minsOf(b.start))[0] || null;
 }
 $("#today-list").addEventListener("click", e=>{
+  if (e.target.closest("#stuck-head")){ stuckOpen = !stuckOpen; renderToday(); return; }
   const btn = e.target.closest("[data-act]");
   const row = e.target.closest(".trow");
   if (!row) return;
   const t = db.tasks.find(x=>x.id===row.dataset.id);
   if (!t) return;
+  if (btn && btn.dataset.act==="adopt"){ t.date = todayStr(); purgeSample(); save(); renderToday(); renderCal(); updateNext(); toast(T("已顺延到今天"), t.title); return; }
+  if (btn && btn.dataset.act==="drop"){ db.tasks = db.tasks.filter(x=>x!==t); purgeSample(); save(); renderToday(); renderCal(); updateNext(); toast(T("已放弃"), t.title); return; }
+  if (btn && btn.dataset.act==="rdate"){ openResched(t); return; }
   if (!btn || btn.dataset.act==="done"){
     toggleDone(t, todayStr());
     const justDone = isDone(t, todayStr());
@@ -3146,6 +3192,29 @@ function taskModal(date, editId){
   if (editId) $("#tm-del").onclick = ()=>{ db.tasks = db.tasks.filter(x=>x.id!==editId); save(); closeModal(); renderToday(); renderCal(); updateNext(); };
 }
 $("#clear-sample").onclick = ()=>{ purgeSample(); save(); renderToday(); renderCal(); };
+/* 轻量改期: 快捷档 + 自定义日期 */
+function addDays(ds, n){ const d = parseD(ds); d.setDate(d.getDate()+n); return dstr(d); }
+function openResched(tk){
+  const opts = [[0,"今天"],[1,"明天"],[2,"后天"],[7,"下周同一天"]];
+  openModal(`
+    <h3>${T("改期")}</h3>
+    <div class="statmini" style="margin-bottom:12px;"><span>${esc(tk.title)}</span><b class="mono">${tk.date}</b></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      ${opts.map(([d,lb])=>`<button class="chip rchip" data-dd="${d}">${T(lb)}</button>`).join("")}
+    </div>
+    <div class="field"><label for="rs-date">${T("日期")}</label><input class="mono" id="rs-date" type="date" value="${tk.date}"></div>
+    ${tk.rep?`<p class="help">${T("重复任务改期会改变其生效日")}</p>`:""}
+    <div class="btnrow"><button class="btn sm" id="rs-cancel">${T("取消")}</button><button class="btn sm pri" id="rs-ok">${T("保存")}</button></div>`);
+  $("#rs-cancel").onclick = closeModal;
+  document.querySelectorAll(".rchip").forEach(c=>c.onclick = ()=>{
+    $("#rs-date").value = addDays(todayStr(), +c.dataset.dd);
+    document.querySelectorAll(".rchip").forEach(x=>x.classList.toggle("on", x===c));
+  });
+  $("#rs-ok").onclick = ()=>{
+    const v = $("#rs-date").value; if (!v) return;
+    tk.date = v; save(); closeModal(); renderToday(); renderCal(); updateNext(); toast(T("已改期"), fmtDate(v));
+  };
+}
 
 /* ================= 日历 ================= */
 let calY = new Date().getFullYear(), calM = new Date().getMonth();
@@ -3318,6 +3387,7 @@ function renderDayPanel(){
         ${x.rep?`<span class="chip" style="font-size:10.5px;padding:1px 6px;">${x.rep==="d"?T("每天"):T("每周")}</span>`:""}
         ${x.pri===0?`<span class="pri p0">${T("高")}</span>`:x.pri===1?`<span class="pri p1">${T("中")}</span>`:""}
         <span class="acts">
+          <button class="iconbtn" data-act="rdate" aria-label="${T("改期")}"><svg class="i" viewBox="0 0 20 20"><path d="M4.5 5.5h11v10h-11zM4.5 8.5h11M7 3.5v3M13 3.5v3"/></svg></button>
           <button class="iconbtn" data-act="edit" aria-label="${T("编辑")}"><svg class="i" viewBox="0 0 20 20"><path d="M13.5 3.5l3 3L7.5 15.5H4.5v-3z"/></svg></button>
           <button class="iconbtn" data-act="del" aria-label="${T("删除")}"><svg class="i" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6.5 6l.8 10.5h5.4L13.5 6M9 9v4.5M11 9v4.5"/></svg></button>
         </span></div>`).join("") || `<div class="empty">${T("这一天还没有日程")}</div>`}`;
@@ -3343,6 +3413,7 @@ $("#daypanel").addEventListener("click", e=>{
     purgeSample();
   }
   else if (act==="edit"){ taskModal(t.date, t.id); return; }
+  else if (act==="rdate"){ openResched(t); return; }
   else if (act==="del"){ db.tasks = db.tasks.filter(x=>x!==t); }
   save(); renderCal(); renderToday(); updateNext();
   if (act==="done" && isDone(t, selDate)){ const ck = document.querySelector(`#daypanel .trow[data-id="${t.id}"] .ck`); ck && ck.classList.add("pop"); }
@@ -3650,6 +3721,12 @@ function renderStats(){
   tiles.push({lb:"本周完成", v:`${dn}/${wkOcc.length}`, u:"项"});
   $("#tiles").innerHTML = tiles.map(t=>`<div class="card tile"><div class="lb">${T(t.lb)}</div><div class="v">${t.v}<small>${T(t.u)}</small></div></div>`).join("");
   $("#stats-sub").textContent = `${wk[0].slice(5).replace("-","/")} – ${wk[6].slice(5).replace("-","/")}`;
+  /* 周目标基准 */
+  const wg = db.settings.wgoal || 20;
+  const wgp = Math.min(100, Math.round(total/(wg*3600)*100));
+  $("#wgoal-row").innerHTML = `<span style="font-size:12px;color:var(--ink2);flex:none;">${T("周目标")}</span>
+    <div class="meter"><i style="width:${wgp}%"></i></div>
+    <span class="mono" style="font-size:12px;color:var(--ink2);flex:none;">${fmtDurH(total)}/${wg}h · ${wgp}%</span>`;
 
   /* 每日柱状图 */
   const maxH = Math.max(...perDay)/3600;
@@ -3827,6 +3904,7 @@ function renderSettings(){
   $("#s-w0").value = db.settings.w0;
   $("#s-w1").value = db.settings.w1;
   $("#s-goal").value = db.settings.goal;
+  $("#s-wgoal").value = db.settings.wgoal || 20;
   $("#s-miles").value = db.settings.miles || "";
   renderStyleSw();
   $("#s-agentport").value = String(AGENT.port);
@@ -3878,6 +3956,7 @@ $("#s-anchor").onchange = e=>{ if (e.target.value){ db.settings.anchor = e.targe
 $("#s-w0").onchange = e=>{ db.settings.w0 = Math.max(1,Math.min(60,+e.target.value||9)); e.target.value = db.settings.w0; save(); updatePlanInfo(); renderToday(); };
 $("#s-w1").onchange = e=>{ db.settings.w1 = Math.max(+db.settings.w0,Math.min(99,+e.target.value||24)); e.target.value = db.settings.w1; save(); updatePlanInfo(); };
 $("#s-goal").onchange = e=>{ db.settings.goal = Math.max(1,Math.min(14,+e.target.value||4)); e.target.value = db.settings.goal; save(); renderToday(); };
+$("#s-wgoal").onchange = e=>{ db.settings.wgoal = Math.max(1,Math.min(70,+e.target.value||20)); e.target.value = db.settings.wgoal; save(); renderToday(); renderStats(); };
 $("#s-miles").onchange = e=>{ db.settings.miles = e.target.value; save(); updatePlanInfo(); };
 $("#s-agentre").onclick = ()=>{
   AGENT.port = Math.min(65535, Math.max(1024, +$("#s-agentport").value || 7676));
@@ -3926,7 +4005,7 @@ $("#s-import-btn").onclick = ()=>{
     const d = JSON.parse($("#s-import").value);
     if (!d || !Array.isArray(d.tasks) || !Array.isArray(d.sessions)) throw 0;
     db = d;
-    db.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
+    db.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
     db.pet = fixPet(db.pet);
     db.fired = db.fired||{}; db.timer = db.timer||null;
     save(); renderAll();
