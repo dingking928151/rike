@@ -446,6 +446,11 @@ input:hover,select:hover,textarea:hover{border-color:var(--accent-line);}
 .catrow .track{flex:1;height:15px;border-radius:0 4px 4px 0;position:relative;}
 .catrow .track i{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0;min-width:2px;}
 .catrow .val{width:66px;flex:none;text-align:right;font-size:12.5px;color:var(--ink2);}
+.badgegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:10px;}
+.badge{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px 10px;border:1px solid var(--hair);border-radius:14px;background:var(--card2);text-align:center;}
+.badge .bi{font-size:26px;line-height:1;}
+.badge .bn{font-size:11px;color:var(--ink2);line-height:1.3;}
+.badge.off{opacity:.5;filter:grayscale(1);}
 #tip{
   position:fixed;z-index:80;pointer-events:none;background:var(--ink);color:var(--bg);
   border-radius:8px;padding:5px 10px;font-size:12px;box-shadow:var(--shadow);white-space:nowrap;
@@ -767,6 +772,10 @@ body.nowbar-on #butler-fab{bottom:142px}
           <h3>专注热力图 · 12 周</h3>
           <div class="heatgrid" id="heat-grid"></div>
           <p class="help">颜色越深当天专注越久；数据来自计时记录。</p>
+        </div>
+        <div class="card sect" id="badge-card">
+          <h3>成就 <span class="chip mono" id="badge-sub"></span></h3>
+          <div class="badgegrid" id="badge-grid"></div>
         </div>
       </div>
     </section>
@@ -1417,6 +1426,29 @@ const I18N = { en: {
   "重复任务改期会改变其生效日": "Rescheduling a repeating task shifts its effective day",
   "每周目标": "Weekly goal", "周目标": "Week goal",
   "小时/周，统计页按此画周进度条": "hours/week — the stats page tracks weekly progress against it",
+  "成就": "Achievements", "成就解锁": "Achievement unlocked",
+  "第一笔记录": "First log", "记录过一次专注": "Log one focus session",
+  "累计 10 小时": "10 hours in", "历史总专注满 10 小时": "10 hours of focus, all time",
+  "累计 50 小时": "50 hours in", "历史总专注满 50 小时": "50 hours of focus, all time",
+  "累计 100 小时": "100 hours in", "历史总专注满 100 小时": "100 hours of focus, all time",
+  "连续 3 天": "3-day streak", "连续打卡 3 天": "Check in 3 days in a row",
+  "连续 7 天": "7-day streak", "连续打卡 7 天": "Check in 7 days in a row",
+  "连续 30 天": "30-day streak", "连续打卡 30 天": "Check in 30 days in a row",
+  "一口气两小时": "Two-hour sprint", "单次专注满 2 小时": "One session of 2+ hours",
+  "爆肝一日": "Power day", "单日专注满 6 小时": "6 hours in a single day",
+  "周目标达成": "Week goal hit", "单周专注达到周目标": "A week at your weekly goal",
+  "早鸟": "Early bird", "早上 8 点前开始过专注": "Start a session before 8 am",
+  "夜猫": "Night owl", "晚上 10 点后开始过专注": "Start a session after 10 pm",
+  "五科开花": "Five subjects", "在 5 个不同科目留下记录": "Log sessions in 5 subjects",
+  "全速一日": "Full-speed day", "单日完成过 5 项日程": "Finish 5 tasks in one day",
+  "一起长大": "Grow up together", "宠物长到成年": "Your pet reaches adulthood",
+  "我也搬好小板凳了！": "Pulling up my little chair!", "这一段我陪你走～": "I'll be right here this session~",
+  "开干开干！": "Let's get to it!", "你专注的样子最帅了": "You look your best when focused",
+  "我们一起加油！": "Let's do this together!",
+  "一段搞定！歇口气～": "Segment done! Take a breath~", "番茄熟啦！休息一下": "Pomodoro's ripe! Take a break",
+  "叮——这一段完成！": "Ding — that's one segment!", "劳逸结合，继续冲！": "Rest a bit, then keep going!",
+  "今天也辛苦啦！": "Great work today!", "给你鼓鼓掌👏": "A round of applause for you 👏",
+  "又变强了一点点！": "A little stronger again!", "收工，摸摸我奖励一下自己吧": "Done! Pet me to treat yourself",
   "配置不完整": "Setup incomplete",
   "先填 API 地址、Key 与模型": "Fill in the base URL, key and model first",
   "已采用": "Adopted",
@@ -2238,6 +2270,9 @@ const PET_LINES = {
   feed:["谢谢投喂！","嗷呜，好吃！","满血复活！","你就是最好的投喂官！"],
   starve:["（饿得缩了一圈……）","（毛色都黯淡了……）","（它委屈地抱住了自己）","（饿过头的它变小了一圈）"],
   stroke:["嘿嘿~","再摸一下嘛！","最喜欢你啦！","（蹭了蹭你的手）","（开心地眯起了眼）"],
+  study:["我也搬好小板凳了！","这一段我陪你走～","开干开干！","你专注的样子最帅了","我们一起加油！"],
+  mid:["一段搞定！歇口气～","番茄熟啦！休息一下","叮——这一段完成！","劳逸结合，继续冲！"],
+  win:["今天也辛苦啦！","给你鼓鼓掌👏","又变强了一点点！","收工，摸摸我奖励一下自己吧"],
 };
 let petSayTimer = 0;
 function petSay(pool){
@@ -2248,6 +2283,13 @@ function petSay(pool){
   b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
   clearTimeout(petSayTimer);
   petSayTimer = setTimeout(()=>{ b.hidden = true; }, 3200);
+}
+/* 计时陪伴统一入口: 宠物总开关关/蛋期/睡着全程静默; 桌宠开着优先桌宠气泡, 否则窝内说 */
+function petTalk(pool){
+  if (!petOn() || !db.pet) return;
+  const s = petState();
+  if (s === "egg" || s === "sleep") return;
+  if ($("#petdesk")) deskSay(pool); else petSay(pool);
 }
 function petEarn(sec){
   if (!db.pet || sec < 60 || !petOn()) return;
@@ -2575,7 +2617,7 @@ setInterval(()=>{
   petAnim.n++;
   if (Math.random() < .12) petAnim.blinkUntil = Date.now() + 320;
   if (view === "pet" && !document.hidden && petStage() !== 0){
-    if (++petIdle >= 50){ petIdle = 0; if (Math.random() < .45) petSay(petState()); }
+    if (++petIdle >= 50){ petIdle = 0; if (Math.random() < .45) petSay((db.timer && !db.timer.doneAt && petState()==="ok") ? "study" : petState()); }
   }
   if (document.hidden) return;
   if (view === "pet") petRender(false);
@@ -3579,6 +3621,7 @@ function switchTimer(nc, ns){
   save();
   fillTimerSelects(); setTimerButtons(); renderReadout(); renderToday(); renderCal(); renderSessions(); renderStats?.();
   toast(T("已切换"), `${oldName} · ${sec >= 60 ? fmtDur(sec) : T("不足 1 分钟，未记录")}`);
+  petTalk("study");
 }
 /* 日程准点提议: 开始那一刻弹一次, 点了才开始记(运行中转切段确认) */
 function openGoPrompt(task){
@@ -3599,6 +3642,7 @@ function openGoPrompt(task){
     save();
     fillTimerSelects(); setTimerButtons(); renderReadout(); renderToday();
     toast(T("开始记录"), `${task.start} · ${task.title}`);
+    petTalk("study");
   };
 }
 function renderPomoChips(){
@@ -3613,6 +3657,7 @@ $("#t-start").onclick = ()=>{
   db.timer = t; save();
   setTimerButtons(); renderReadout(); renderToday();
   if (mode==="pomo") toast(T("番茄钟开始"),TF("专注 {n} 分钟，加油",{n:db.settings.pw}));
+  petTalk("study");
 };
 $("#t-pause").onclick = ()=>{
   const t = tState(); if (!t) return;
@@ -3633,6 +3678,7 @@ function finishTimer(auto){
   setTimerButtons(); renderReadout(); renderSessions(); renderToday(); renderStats?.();
   if (sec >= 60) toast(auto?T("番茄钟专注完成"):T("已记录"), `${t.subj||cats()[t.cat]} · ${fmtDur(sec)}`);
   if (sec >= 60) buzz([24,60,24]);
+  if (sec >= 60) petTalk("win");
 }
 $("#t-finish").onclick = ()=>finishTimer(0);
 /* 番茄钟引擎 (只管 pomo 模式; 自由计时不受段长约束) */
@@ -3651,6 +3697,7 @@ setInterval(()=>{
         petEarn(sec);
         t.phase = "rest"; t.round++; t.startTs = Date.now(); t.pausedAcc = 0;
         renderSessions();
+        petTalk("mid");
       } else {
         beep(); buzz(18); sysNotify(T("番茄钟：休息结束"), TF("开始第 {n} 轮专注",{n:t.round}));
         toast(T("休息结束"), TF("开始第 {n} 轮专注",{n:t.round}));
@@ -3707,7 +3754,66 @@ function streak(){
   while (has(dstr(d))){ s++; d.setDate(d.getDate()-1); }
   return s;
 }
+/* ---------- 成就徽章: 全局记忆, 纯数据驱动, 不进插件市场 ---------- */
+function wkKey(ds){ const d = parseD(ds); const lead = (d.getDay()+6)%7; d.setDate(d.getDate()-lead); return dstr(d); }
+const BADGES = [
+  {id:"first", icon:"📝", name:"第一笔记录", desc:"记录过一次专注", cond:()=>db.sessions.length>=1},
+  {id:"h10", icon:"⏳", name:"累计 10 小时", desc:"历史总专注满 10 小时", cond:()=>petTotalSec()>=10*3600},
+  {id:"h50", icon:"⏱", name:"累计 50 小时", desc:"历史总专注满 50 小时", cond:()=>petTotalSec()>=50*3600},
+  {id:"h100", icon:"🏆", name:"累计 100 小时", desc:"历史总专注满 100 小时", cond:()=>petTotalSec()>=100*3600},
+  {id:"d3", icon:"🔥", name:"连续 3 天", desc:"连续打卡 3 天", cond:()=>streak()>=3},
+  {id:"d7", icon:"🔥", name:"连续 7 天", desc:"连续打卡 7 天", cond:()=>streak()>=7},
+  {id:"d30", icon:"🔥", name:"连续 30 天", desc:"连续打卡 30 天", cond:()=>streak()>=30},
+  {id:"long2", icon:"🚀", name:"一口气两小时", desc:"单次专注满 2 小时", cond:()=>db.sessions.some(s=>s.sec>=7200)},
+  {id:"day6", icon:"💪", name:"爆肝一日", desc:"单日专注满 6 小时", cond:()=>Object.values(db.sessions.reduce((m,s)=>(m[s.date]=(m[s.date]||0)+s.sec,m),{})).some(v=>v>=6*3600)},
+  {id:"week", icon:"🎯", name:"周目标达成", desc:"单周专注达到周目标", cond:()=>{
+    const goal = (db.settings.wgoal||20)*3600, m = {};
+    for (const s of db.sessions){ const k = wkKey(s.date); m[k] = (m[k]||0) + s.sec; }
+    return Object.values(m).some(v=>v>=goal);
+  }},
+  {id:"early", icon:"🌅", name:"早鸟", desc:"早上 8 点前开始过专注", cond:()=>db.sessions.some(s=>new Date(s.startTs).getHours()<8)},
+  {id:"night", icon:"🌙", name:"夜猫", desc:"晚上 10 点后开始过专注", cond:()=>db.sessions.some(s=>new Date(s.startTs).getHours()>=22)},
+  {id:"cats5", icon:"📚", name:"五科开花", desc:"在 5 个不同科目留下记录", cond:()=>new Set(db.sessions.map(s=>s.cat)).size>=5},
+  {id:"done5", icon:"✅", name:"全速一日", desc:"单日完成过 5 项日程", cond:()=>{
+    const m = {};
+    for (const t of db.tasks){
+      if (t.rep){ for (const ds in (t.doneOn||{})) if (t.doneOn[ds]) m[ds] = (m[ds]||0) + 1; }
+      else if (t.done && t.date) m[t.date] = (m[t.date]||0) + 1;
+    }
+    return Object.values(m).some(v=>v>=5);
+  }},
+  {id:"petad", icon:"🐾", name:"一起长大", desc:"宠物长到成年", cond:()=>petStage()===2},
+];
+let badgesQuiet = true;   /* 首轮结算静默: 老数据升级后一次性补发不刷屏 */
+function checkBadges(){
+  db.badges = db.badges || {};
+  let hitAny = false;
+  for (const b of BADGES){
+    if (db.badges[b.id]) continue;
+    let hit = false;
+    try { hit = b.cond(); } catch(e){}
+    if (hit){
+      db.badges[b.id] = Date.now(); hitAny = true;
+      if (!badgesQuiet){ toast(`${b.icon} ${T(b.name)}`, T("成就解锁")); petTalk("win"); }
+    }
+  }
+  if (hitAny) save();
+  badgesQuiet = false;
+}
+function renderBadges(){
+  const sub = $("#badge-sub"), grid = $("#badge-grid");
+  if (!sub || !grid) return;
+  const got = Object.keys(db.badges||{}).length;
+  sub.textContent = `${got}/${BADGES.length}`;
+  grid.innerHTML = BADGES.map(b=>{
+    const at = db.badges[b.id];
+    const tip = at ? `${T(b.name)} · ${fmtDate(dstr(new Date(at)))}` : T(b.desc);
+    return `<div class="badge ${at?"":"off"}" data-tip="${tip}"><span class="bi">${at?b.icon:"🔒"}</span><span class="bn">${at?T(b.name):"???"}</span></div>`;
+  }).join("");
+  grid.querySelectorAll(".badge").forEach(el=>bindTip(el, el.dataset.tip));
+}
 function renderStats(){
+  checkBadges();
   const wk = weekRange();
   const perDay = wk.map(ds => db.sessions.filter(s=>s.date===ds).reduce((a,x)=>a+x.sec,0));
   const total = perDay.reduce((a,b)=>a+b,0);
@@ -3754,6 +3860,7 @@ function renderStats(){
       <span class="track"><i style="width:${x.sec/mx*100}%;background:${colOf(x.i)}"></i></span>
       <span class="val mono">${fmtDur(x.sec)}</span></div>`).join("");
   renderHeat();
+  renderBadges();
 }
 /* 专注热力图(实验插件): 过去 12 周, 周一开头逐列排, 色阶=当日专注秒数 */
 function renderHeat(){
