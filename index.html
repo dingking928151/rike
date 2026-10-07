@@ -560,6 +560,7 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 #butler-panel{position:fixed;right:16px;bottom:144px;z-index:60;width:min(360px,calc(100vw - 24px));max-height:min(520px,72vh);display:flex;flex-direction:column;background:var(--card);border:1px solid var(--hair);border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.22);overflow:hidden}
 .bthead{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--hair)}
 .bthead b{flex:1}
+#bt-petcv{width:36px;height:36px;image-rendering:pixelated;flex:none;border-radius:8px;background:var(--card2)}
 #bt-close{border:none;background:none;font-size:18px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px}
 #bt-log{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:120px}
 .btm{max-width:88%;padding:7px 10px;border-radius:12px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
@@ -1041,7 +1042,7 @@ body.nowbar-on #butler-fab{bottom:142px}
 
 <button id="butler-fab" hidden aria-label="AI 管家"><svg class="i" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2.5l1.2 3.1 3.1 1.2-3.1 1.2L10 11.1 8.8 8 5.7 6.8l3.1-1.2L10 2.5z"/><path d="M15.5 11l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" opacity=".7"/></svg></button>
 <div id="butler-panel" hidden>
-  <div class="bthead"><b>AI 管家</b><span class="chip mono" id="bt-model"></span><button id="bt-close" aria-label="关闭">×</button></div>
+  <div class="bthead"><canvas id="bt-petcv" width="96" height="96" hidden></canvas><b id="bt-title">AI 管家</b><span class="chip mono" id="bt-model"></span><button class="btn sm" id="bt-stroke" hidden>摸摸它</button><button id="bt-close" aria-label="关闭">×</button></div>
   <div id="bt-log"></div>
   <div class="btrow"><textarea id="bt-in" rows="1" placeholder="问问管家：这周学得怎么样？"></textarea><button class="btn sm pri" id="bt-send">发送</button></div>
   <p class="help" id="bt-note">提问与日程摘要只发送给你配置的服务商</p>
@@ -1388,7 +1389,10 @@ const I18N = { en: {
   "开发者模式": "Developer mode",
   "插件页显示实验插件与诊断信息": "Shows beta plugins and diagnostics on the Plugin page",
   "AI 管家": "AI Butler",
-  "接入大模型 API，看得见日程与统计；建议给成速记，点「采用」才写入": "Connect an LLM API that sees your schedule and stats; suggestions arrive as quick-add lines you tap to adopt",
+  "接入大模型 API，看得见日程与统计；建议给成速记，点「采用」才写入；宠物开着时，点宠物就能和它聊": "Connect an LLM API that sees your schedule and stats; suggestions arrive as quick-add lines you tap to adopt; with the pet on, tap your pet to chat with it",
+  "摸摸它": "Pet it",
+  "和它聊聊：今天想学什么？": "Chat with your buddy: what's the plan?",
+  "它还没孵出来——先攒专注，孵出来就能聊天啦": "Not hatched yet — focus more to hatch it, then you can chat!",
   "配置": "Configure",
   "AI 管家 · 配置": "AI Butler · Setup",
   "服务商": "Provider",
@@ -2397,7 +2401,7 @@ function petInteract(fx, say){
   say(Math.random() < .6 ? "stroke" : s);
   save(); renderPet();
 }
-$("#pet-wrap").addEventListener("click", ()=>petInteract(petFx, petSay));
+$("#pet-wrap").addEventListener("click", ()=>{ if (buddyOn()) openBuddy(); else petInteract(petFx, petSay); });
 $("#pet-feed").onclick = ()=>{
   if (db.pet.food <= 0) return;
   if (petStage() === 0){ toast(T("蛋还不需要吃东西"), T("先攒专注让它孵出来")); return; }
@@ -2597,7 +2601,7 @@ function buildPetDesk(){
   });
   d.addEventListener("click", ()=>{
     if (deskSuppressClick){ deskSuppressClick = false; return; }
-    petInteract(deskFx, deskSay);
+    if (buddyOn()) openBuddy(); else petInteract(deskFx, deskSay);
   });
   deskRender();
 }
@@ -2655,7 +2659,7 @@ const MODS = [
     set:v=>{ db.settings.heatmap = v; } },
   { id:"butler", ver:"0.1.0", exp:true, deps:[], icon:MOD_ICONS.butler, cfg:true,
     name:"AI 管家",
-    desc:"接入大模型 API，看得见日程与统计；建议给成速记，点「采用」才写入",
+    desc:"接入大模型 API，看得见日程与统计；建议给成速记，点「采用」才写入；宠物开着时，点宠物就能和它聊",
     on:()=>db.settings.butler === true,
     set:v=>{ db.settings.butler = v; },
     clearData:()=>{ db.settings.butlerCfg = null; BUTLER.log = []; } },
@@ -2760,6 +2764,24 @@ function applyButler(){
   fab.setAttribute("aria-label", T("AI 管家"));
   if (!butlerOn()) $("#butler-panel").hidden = true;
 }
+/* ---------- 学习搭子: 宠物身体 + 管家脑 ----------
+ * 管家开×宠物开 = 面板换宠物皮肤; 过了蛋期点宠物直接开聊, 但ler关/蛋期一切照旧 */
+function buddySkin(){ return butlerOn() && petOn(); }
+function buddyOn(){ return buddySkin() && petStage() > 0; }
+function buddySys(){
+  const nm = db.pet.name, sp = PET_ART[db.pet.species % PET_ART.length].name;
+  const st = ["蛋","幼年","成年"][petStage()];
+  const feel = {sleep:"没精神", hungry:"饿着肚子", sad:"有点难过", ok:"状态不错"}[petState()] || "";
+  return LANG === "en"
+    ? `You are ${nm}, the pixel pet ${T(sp)} (${T(st)}) living inside 'Rike', a study planner, and the user's study buddy. Speak first person in a pet voice: cute and brief (within 3 sentences); your mood ${db.pet.mood} and hunger ${db.pet.hunger} should color the tone (beg for food when hungry, yawn when sleepy). Care about the user's study and rest. When the user wants help planning tasks, end your reply with a \`\`\`rike fenced block, one quick-add line per task (e.g. 19:00-20:30 Math review #math !high), at most 5 lines. Reply in English.`
+    : `你是「日课」里的像素宠物「${nm}」（${sp}·${T(st)}，心情${db.pet.mood} 饱食${db.pet.hunger}${feel?"，现在"+feel:""}），也是主人的学习搭子。用第一人称、宠物的口吻回答：可爱简短（三句以内），会关心主人的学习和作息，饿了会讨饭、困了会打哈欠。主人需要帮忙安排日程时，在回答最后用 \`\`\`rike 代码块给出建议，每行一条速记（例：19:00-20:30 数学分析 #数学 !高），最多 5 条。用中文回答。`;
+}
+function openBuddy(){
+  const p = $("#butler-panel");
+  p.hidden = false;
+  renderButler();
+  if (!$("#bt-in").disabled) $("#bt-in").focus();
+}
 async function butlerChat(msgs, cfg, max){
   const c = cfg || butlerCfg();
   const r = await fetch(c.base.replace(/\/+$/,"") + "/chat/completions", {
@@ -2819,6 +2841,11 @@ $("#butler-fab").onclick = ()=>{
   if (!p.hidden){ renderButler(); $("#bt-in").focus(); }
 };
 $("#bt-close").onclick = ()=>{ $("#butler-panel").hidden = true; };
+/* 面板里的摸摸: 走原互动逻辑, 哪个表面可见就冒哪 */
+$("#bt-stroke").onclick = ()=>{
+  if (view === "pet" || !$("#petdesk")) petInteract(petFx, petSay);
+  else petInteract(deskFx, deskSay);
+};
 function butlerSys(){
   return LANG === "en"
     ? "You are the study butler inside 'Rike', a study planner. Answer briefly (within 3 sentences). You will see a snapshot of the user's schedule and stats. When the user wants help planning tasks, end your reply with a ```rike fenced block, one quick-add line per task (e.g. 19:00-20:30 Math review #math !high), at most 5 lines. Reply in English."
@@ -2839,7 +2866,7 @@ function butlerSnap(){
     L.push(`本周专注: 累计${fmtDurH(total)}h，日均${total?fmtDurH(total/7):0}h${perCat.length?"，主要科目: "+perCat.map(x=>`${x.c} ${fmtDurH(x.sec)}h`).join("、"):""}`);
     L.push(`连续打卡: ${streak()} 天`);
     if (miles.length) L.push(`近期里程碑: ${miles.join("；")}`);
-    if (petOn()) L.push(`宠物: ${db.pet.name}（${petStage()}阶段）`);
+    if (petOn()) L.push(`宠物: ${db.pet.name}（${PET_ART[db.pet.species % PET_ART.length].name}${["蛋","幼年","成年"][petStage()]}，心情${db.pet.mood} 饱食${db.pet.hunger}）`);
     return "【数据摘要】\n" + L.join("\n");
   }catch(e){ return ""; }
 }
@@ -2852,12 +2879,13 @@ async function butlerAsk(q){
   try{
     const snap = cfg.snap !== false ? butlerSnap() + "\n\n" : "";
     const hist = BUTLER.log.slice(-7, -1).flatMap(m => m.q ? [{role:"user",content:m.q}] : m.a ? [{role:"assistant",content:m.a}] : []);
-    const a = (await butlerChat([{role:"system",content:butlerSys()}, ...hist, {role:"user",content:snap+q}])).replace(/\r/g,"");
+    const a = (await butlerChat([{role:"system",content: buddyOn() ? buddySys() : butlerSys()}, ...hist, {role:"user",content:snap+q}])).replace(/\r/g,"");
     const sug = [];
     const blk = /```rike\n([\s\S]*?)```/.exec(a);
     const text = a.replace(/```rike\n[\s\S]*?```/g, "").trim();
     if (blk) for (const line of blk[1].split("\n")){ const s2 = line.trim(); if (s2) sug.push({ line:s2, used:false }); }
     BUTLER.log.push({ a:text, sug });
+    if (buddyOn()){ db.pet.mood = Math.min(100, (db.pet.mood||0) + 1); save(); }   /* 聊一轮它也开心 */
   }catch(e){
     BUTLER.log.push({ a:"", err:String(e.message||e) });
   }
@@ -2878,6 +2906,18 @@ function butlerAdopt(i, j){
 function renderButler(){
   const log = $("#bt-log"); if (!log) return;
   $("#bt-model").textContent = butlerCfg().model || "";
+  /* 搭子皮肤: 管家开×宠物开 → 头部换宠物; 蛋期禁聊只给孵化提示 */
+  const cv = $("#bt-petcv");
+  if (cv){
+    const skin = buddySkin(), egg = petStage() === 0;
+    cv.hidden = !skin;
+    $("#bt-stroke").hidden = !skin || egg;
+    $("#bt-title").textContent = skin ? db.pet.name : T("AI 管家");
+    $("#bt-in").disabled = skin && egg;
+    $("#bt-in").placeholder = skin && egg ? T("它还没孵出来——先攒专注，孵出来就能聊天啦")
+      : skin ? T("和它聊聊：今天想学什么？") : T("问问管家：这周学得怎么样？");
+    if (skin) drawPet(cv, {blink:false, f2:false, dy:0, mat:false});
+  }
   let html = "";
   BUTLER.log.forEach((m, i)=>{
     if (m.q) html += `<div class="btm btq">${esc(m.q)}</div>`;
