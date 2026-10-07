@@ -534,6 +534,21 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 #petdesk-deco{position:absolute;inset:-10px;pointer-events:none;}
 #petdesk .petbubble{top:auto;bottom:calc(100% + 9px);max-width:220px;white-space:nowrap;}
 #petdesk .pfloat{font-size:13px;}
+/* ---------- 人物伙伴 ---------- */
+#mate{
+  position:fixed;z-index:57;width:64px;height:64px;padding:0;border:0;background:none;
+  cursor:grab;touch-action:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.3));
+}
+#mate:active{cursor:grabbing;}
+#mate canvas{width:64px;height:64px;image-rendering:pixelated;}
+#mate img{width:64px;height:64px;border-radius:12px;object-fit:cover;display:block;}
+#mate .petbubble{top:auto;bottom:calc(100% + 9px);max-width:240px;white-space:nowrap;}
+#bt-mateimg{width:36px;height:36px;border-radius:8px;object-fit:cover;flex:none;background:var(--card2);}
+#mt-prev{display:block;margin:0 auto;image-rendering:pixelated;border-radius:10px;background:var(--card2);}
+#mt-previmg{display:block;margin:0 auto;border-radius:10px;object-fit:cover;background:var(--card2);}
+#mt-previmg[hidden]{display:none;}
+body.mate-on .bthead{background:color-mix(in srgb,var(--mate-c,#B0766C) 14%,var(--card));}
+body.mate-on .bta{background:color-mix(in srgb,var(--mate-c,#B0766C) 20%,var(--card));}
 /* ---------- 插件市场 ---------- */
 .modcard .modhead{display:flex;align-items:flex-start;gap:11px;}
 .modcard .modicon{
@@ -1042,7 +1057,7 @@ body.nowbar-on #butler-fab{bottom:142px}
 
 <button id="butler-fab" hidden aria-label="AI 管家"><svg class="i" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2.5l1.2 3.1 3.1 1.2-3.1 1.2L10 11.1 8.8 8 5.7 6.8l3.1-1.2L10 2.5z"/><path d="M15.5 11l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" opacity=".7"/></svg></button>
 <div id="butler-panel" hidden>
-  <div class="bthead"><canvas id="bt-petcv" width="96" height="96" hidden></canvas><b id="bt-title">AI 管家</b><span class="chip mono" id="bt-model"></span><button class="btn sm" id="bt-stroke" hidden>摸摸它</button><button id="bt-close" aria-label="关闭">×</button></div>
+  <div class="bthead"><img id="bt-mateimg" hidden alt=""><canvas id="bt-petcv" width="96" height="96" hidden></canvas><b id="bt-title">AI 管家</b><span class="chip mono" id="bt-model"></span><button class="btn sm" id="bt-stroke" hidden>摸摸它</button><button id="bt-close" aria-label="关闭">×</button></div>
   <div id="bt-log"></div>
   <div class="btrow"><textarea id="bt-in" rows="1" placeholder="问问管家：这周学得怎么样？"></textarea><button class="btn sm pri" id="bt-send">发送</button></div>
   <p class="help" id="bt-note">提问与日程摘要只发送给你配置的服务商</p>
@@ -1392,6 +1407,32 @@ const I18N = { en: {
   "接入大模型 API，看得见日程与统计；建议给成速记，点「采用」才写入；宠物开着时，点宠物就能和它聊": "Connect an LLM API that sees your schedule and stats; suggestions arrive as quick-add lines you tap to adopt; with the pet on, tap your pet to chat with it",
   "摸摸它": "Pet it",
   "和它聊聊：今天想学什么？": "Chat with your buddy: what's the plan?",
+  "和 {n} 聊聊：今天想学什么？": "Chat with {n}: what's the plan?",
+  "人物伙伴": "Companion",
+  "桌面人物伙伴：三位伙伴各有名字、背景与专属主题色，点开即聊；人设与形象都能自定义": "A desktop companion: three friends with their own names, backstories and theme colors — chat on tap; persona and look are fully customizable",
+  "人物伙伴 · 设置": "Companion · Setup",
+  "当前人物": "Character",
+  "名字": "Name",
+  "关系": "Relationship",
+  "性格": "Personality",
+  "背景故事": "Backstory",
+  "预置形象": "Preset look",
+  "编辑形象": "Edit pixels",
+  "导入代码": "Import code",
+  "导出代码": "Export code",
+  "上传 PNG": "Upload PNG",
+  "留空则用预置人设；名字/关系/性格/背景随改随存。": "Empty fields fall back to the preset persona; edits save as you type.",
+  "头发": "Hair", "皮肤": "Skin", "衣服": "Outfit", "腮红": "Blush",
+  "人物像素编辑器 · 32×32": "Character pixel editor · 32×32",
+  "导出人物形象": "Export character look",
+  "导入人物形象": "Import character look",
+  "粘贴分享的人物形象代码": "Paste a shared character look code",
+  "代码不是有效的人物形象": "Not a valid character look code",
+  "换上了你画的样子": "They're wearing your design now",
+  "图片太大": "Image too large",
+  "换一张小一点的图试试": "Try a smaller picture",
+  "形象已更新": "Look updated",
+  "看看新模样！": "Check out the new look!",
   "它还没孵出来——先攒专注，孵出来就能聊天啦": "Not hatched yet — focus more to hatch it, then you can chat!",
   "配置": "Configure",
   "AI 管家 · 配置": "AI Butler · Setup",
@@ -1532,8 +1573,9 @@ function seed(){
       S(2,"GCN 预热 · 图表示基础",...hr(dstr(y1),15,30,50),dstr(y1)),
       S(3,"英语精读",...hr(t,8,10,25),t),
     ],
-    settings: {lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""},
+    settings: {lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,mate:false,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""},
     pet: petDefault(),
+    mate: mateDefault(),
     timer: null,
     fired: {}
   };
@@ -1544,9 +1586,10 @@ function load(){
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.tasks)) return null;
-    d.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
+    d.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,mate:false,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
     d.sessions = d.sessions||[]; d.fired = d.fired||{}; d.timer = d.timer||null;
     d.pet = fixPet(d.pet);
+    d.mate = fixMate(d.mate);
     return d;
   }catch(e){ lsOK = false; return null; }
 }
@@ -2128,6 +2171,236 @@ const PET_EGG = {pal:{B:"#EFE8D8",D:"#A08858",W:"#FDFCF8",E:"#2E2A26",P:"#E89898
 "................................",
 "................................"]}
 
+/* ================= 人物伙伴立绘: 32×32 两帧 (H=头发 A=皮肤 B=衣服 D=深色/描边 W=白/高光 E=眼睛嘴 P=腮红) ================= */
+const MATE_ART = [
+{name:"沈知夏",pal:{H:"#8A5F4A",A:"#F2C6A0",B:"#EFE6D4",D:"#54402F",W:"#FBF8F0",E:"#2E2A26",P:"#E89A94"},main:"#B0766C",
+ art:[
+"................................",
+"................................",
+"..........DDDDDDDDDDDD..........",
+".........DHHHHHHHHHHHHD.........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHAAAAAAAAAAHHD........",
+"........DHAAAAAAAAAAAAHD........",
+"........DHAAEWAAAAWEAAHD........",
+"........DHAAEEAAAAEEAAHD........",
+"........DHAPAAAAAAAAPAHD........",
+"........DHAAAAEEEEAAAAHD........",
+"........DHDAAAAAAAAAADHD........",
+"........DHHDAAAAAAAADHHD........",
+"........DHBBBDADDADBBBHD........",
+".......DHHBBBBBBBBBBBBHHD.......",
+".......DHHBBBBBBBBBBBBHHD.......",
+"......DHHHBBBBBBBBBBBBHHHD......",
+"......DHHHBBBBBBBBBBBBHHHD......",
+"......DHHDBBBBBBBBBBBBDHHD......",
+"......DHH.DBBBBBBBBBBD.HHD......",
+".....DHH..DBBBBBBBBBBD..HHD.....",
+".....DHHDBBBBBBBBBBBBBBDHHD.....",
+"....DHHDBBBBBBBBBBBBBBBBDHHD....",
+"....DHHDBBBBBBBBBBBBBBBBDHHD....",
+"....DHD.DDDDDDDDDDDDDDDD.DHD....",
+"....H.....DAAAA..AAAAD.....H....",
+"..........DAAAA..AAAAD..........",
+"..........DAAAA..AAAAD..........",
+"........DDDDDD....DDDDDD........",
+"........DDDDDD....DDDDDD........",
+"................................",],
+ art2:[
+"................................",
+"................................",
+"..........DDDDDDDDDDDD..........",
+".........DHHHHHHHHHHHHD.........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHAAAAAAAAAAHHD........",
+"........DHAAAAAAAAAAAAHD........",
+"........DHAAEWAAAAWEAAHD........",
+"........DHAAEEAAAAEEAAHD........",
+"........DHAPAAAAAAAAPAHD........",
+"........DHAAAAEEEEAAAAHD........",
+"........DHDAAAAAAAAAADHD........",
+"........DHHDAAAAAAAADHHD........",
+"........DHBBBDADDADBBBHD........",
+".......DHHBBBBBBBBBBBBHHD.......",
+".......DHHBBBBBBBBBBBBHHD.......",
+".....DHHHHBBBBBBBBBBBBHHHHD.....",
+".....DHHHHBBBBBBBBBBBBHHHHD.....",
+".....DHHHDBBBBBBBBBBBBDHHHD.....",
+".....DHHH.DBBBBBBBBBBD.HHHD.....",
+"....DHHH..DBBBBBBBBBBD..HHHD....",
+"....DHHHDBBBBBBBBBBBBBBDHHHD....",
+"...DHHHDBBBBBBBBBBBBBBBBDHHHD...",
+"...DHHHDBBBBBBBBBBBBBBBBDHHHD...",
+"...DHD..DDDDDDDDDDDDDDDD..DHD...",
+"...H......DAAAA..AAAAD......H...",
+"..........DAAAA..AAAAD..........",
+"..........DAAAA..AAAAD..........",
+"........DDDDDD....DDDDDD........",
+"........DDDDDD....DDDDDD........",
+"................................",]},
+{name:"陆嘉阳",pal:{H:"#323F54",A:"#F2C6A0",B:"#4A6FA5",D:"#232B38",W:"#F5F7FA",E:"#2E2A26",P:"#E89A94"},main:"#5B7FB0",
+ art:[
+"................................",
+"................................",
+"..........DDDDDDDDDDDD..........",
+".........DHHHHHHHHHHHHD.........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHAAAAAAAAAAHHD........",
+"........DHAAAAAAAAAAAAHD........",
+"........DHAAEWAAAAWEAAHD........",
+"........DHAAEEAAAAEEAAHD........",
+"........DHAPAAAAAAAAPAHD........",
+"........D.AAAAEEEEAAAA.D........",
+"........DDDAAAAAAAAAADDD........",
+"...........DAAAAAAAAD...........",
+"........DBBBBBBWWBBBBBBD........",
+".......DBBBBBBBWWBBBBBBBD.......",
+".......DBWWBBBBWWBBBBWWBD.......",
+".......DBBBBBBBWWBBBBBBBD.......",
+"......DBBBBBBBBWWBBBBBBBBD......",
+"......DBBBBBBBBWWBBBBBBBBD......",
+"......DBBBBBBBBWWBBBBBBBBD......",
+"......DBBBBBBBBWWBBBBBBBBD......",
+"......DBBBBBBBBWWBBBBBBBBD......",
+"......DABBBBBBBWWBBBBBBBAD......",
+"......DDDDDDDD.WW.DDDDDDDD......",
+".........DDDDD....DDDDD.........",
+".........DDDDD....DDDDD.........",
+".........DDDDD....DDDDD.........",
+".........DDDDD....DDDDD.........",
+"........WWWWWW....WWWWWW........",
+"........DDDDDD....DDDDDD........",
+"................................",],
+ art2:[
+"................................",
+"................................",
+"..........DDDDDDDDDDDD..........",
+".........DHHHHHHHHHHHHD.........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHAAAAAAAAAAHHD........",
+"........DHAAAAAAAAAAAAHD........",
+"........DHAAEWAAAAWEAAHD........",
+"........DHAAEEAAAAEEAAHD........",
+"........DHAPAAAAAAAAPAHD........",
+"........D.AAAAEEEEAAAA.D........",
+"........DDDAAAAAAAAAADDD........",
+"...........DAAAAAAAAD...........",
+"........DBBBBBBWWBBBBBBD........",
+".......DBWWBBBBWWBBBBWWBD.......",
+".......DBBBBBBBWWBBBBBBBD.......",
+".......DBBBBBBBWWBBBBBBBD.......",
+".....DBBBBBBBBBWWBBBBBBBBBD.....",
+".....DBBBBBBBBBWWBBBBBBBBBD.....",
+".....DBBBBBBBBBWWBBBBBBBBBD.....",
+"......DBBBBBBBBWWBBBBBBBBD......",
+"......DBBBBBBBBWWBBBBBBBBD......",
+"......DABBBBBBBWWBBBBBBBAD......",
+"......DDDDDDDD.WW.DDDDDDDD......",
+".........DDDDD....DDDDD.........",
+".........DDDDD....DDDDD.........",
+".........DDDDD....DDDDD.........",
+".........DDDDD....DDDDD.........",
+"........WWWWWW....WWWWWW........",
+"........DDDDDD....DDDDDD........",
+"................................",]},
+{name:"江小满",pal:{H:"#A5713A",A:"#F5D2AE",B:"#6E8B5E",D:"#4A4234",W:"#FBF8F0",E:"#2E2A26",P:"#F0A3A3"},main:"#7BA05B",
+ art:[
+"................................",
+"................................",
+"..........DDDDDDDDDDDD..........",
+".........DHHHHHHHHHHHHD.........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHHHHHHHHHHHHHD........",
+"....HHHHDHHAAAAAAAAAAHHDHHHH....",
+"...HHHHHDHAAAAAAAAAAAAHDHHHHH...",
+"...HHHHHDHAAEWAAAAWEAAHDHHHHH...",
+"...HHHHHDHAAEEAAAAEEAAHDHHHHH...",
+"...HHHHHDHAPAAAAAAAAPAHDHHHHH...",
+"...HHHHHDHAAAAEEEEAAAAHDHHHHH...",
+"...HHHHHDHDAAAAAAAAAADHDHHHHH...",
+"..HHHHHH...DAAAAAAAAD...HHHHHH..",
+"..HHHHHHDWWWBBWWWWBBWWWDHHHHHH..",
+".HHHHHHHDWWWBBWWWWBBWWWDHHHHHHH.",
+".HHHHHHHDWWWBBWWWWBBWWWDHHHHHHH.",
+".HHHHHHHDWWWBBWWWWBBWWWDHHHHHHH.",
+"..HHHHHHDWWWBBBBBBBBWWWDHHHHHH..",
+"..HHHHHHDWWWBBBBBBBBWWWDHHHHHH..",
+"...HHHHHDWWWBBBBBBBBWWWDHHHHH...",
+"...HHHHHDWWWBBBBBBBBWWWDHHHHH...",
+"........DBBBBBBBBBBBBBBD........",
+"........DBBBBBBBBBBBBBBD........",
+"........DBBBBBBBBBBBBBBD........",
+"..........DBBBB..BBBBD..........",
+"..........DBBBB..BBBBD..........",
+"..........DBBBB..BBBBD..........",
+"..........DBBBB..BBBBD..........",
+"........DDDDDD....DDDDDD........",
+"........DDDDDD....DDDDDD........",
+"................................",],
+ art2:[
+"................................",
+"................................",
+"..........DDDDDDDDDDDD..........",
+".........DHHHHHHHHHHHHD.........",
+"........DHHHHHHHHHHHHHHD........",
+"........DHHHHHHHHHHHHHHD........",
+"....HHHHDHHAAAAAAAAAAHHDHHHH....",
+"..HHHHHHDHAAAAAAAAAAAAHDHHHHHH..",
+"..HHHHHHDHAAEWAAAAWEAAHDHHHHHH..",
+"..HHHHHHDHAAEEAAAAEEAAHDHHHHHH..",
+"..HHHHHHDHAPAAAAAAAAPAHDHHHHHH..",
+"..HHHHHHDHAAAAEEEEAAAAHDHHHHHH..",
+"..HHHHHHDHHDAAAAAAAAAADHDHHHHHH.",
+".HHHHHHH...DAAAAAAAAD...HHHHHHH.",
+".HHHHHHHDWWWBBWWWWBBWWWDHHHHHHH.",
+"HHHHHHHHDWWWBBWWWWBBWWWDHHHHHHHH",
+".HHHHHHHDWWWBBWWWWBBWWWDHHHHHHH.",
+"..HHHHHHDWWWBBWWWWBBWWWDHHHHHH..",
+"..HHHHHHDWWWBBBBBBBBWWWDHHHHHH..",
+"...HHHHHDWWWBBBBBBBBWWWDHHHHH...",
+"...HHHHHDWWWBBBBBBBBWWWDHHHHH...",
+"....HHHHDWWWBBBBBBBBWWWDHHHH....",
+"........DBBBBBBBBBBBBBBD........",
+"........DBBBBBBBBBBBBBBD........",
+"........DBBBBBBBBBBBBBBD........",
+"..........DBBBB..BBBBD..........",
+"..........DBBBB..BBBBD..........",
+"..........DBBBB..BBBBD..........",
+"..........DBBBB..BBBBD..........",
+"........DDDDDD....DDDDDD........",
+"........DDDDDD....DDDDDD........",
+"................................",]}
+];
+/* 三人团人设: 关系/背景/性格 (en=英文版人设, matePreset 按语言取) */
+const CHAR_PRESETS = [
+  { rel:"温柔学姐", bio:"大三计算机系，爱读书也爱压马路，说话轻声细语，总能把复杂的事讲明白。", tone:"温柔、会照顾人、偶尔讲冷笑话",
+    en:{ rel:"gentle senior", bio:"A third-year CS major who loves books and long walks; soft-spoken, patient, great at making hard things click.", tone:"warm, caring, occasionally punny" } },
+  { rel:"阳光学长", bio:"校篮球队主力，时间管理狂人，相信先玩痛快再学踏实。", tone:"阳光、爱打气、行动派",
+    en:{ rel:"sunny senior", bio:"Basketball team starter and time-management nerd; believes in playing hard then studying grounded.", tone:"sunny, cheerleading, do-it-now" } },
+  { rel:"青梅竹马", bio:"从小一起长大的邻居，嘴上爱损你、心里最挺你，学习上谁也不惯着谁。", tone:"嘴硬心软、爱抬杠、其实很靠谱",
+    en:{ rel:"childhood best friend", bio:"Grew up next door; teases you constantly but always has your back, and never lets you slack on study.", tone:"sharp-tongued, soft-hearted, secretly reliable" } },
+];
+function mateDefault(){ return { active:0, cus:{}, arts:{}, pos:null, logs:[[],[],[]] }; }
+function fixMate(m){
+  const d = mateDefault();
+  m = m && typeof m === "object" ? m : {};
+  for (const k in d) if (m[k] === undefined) m[k] = d[k];
+  if (m.active !== 0 && m.active !== 1 && m.active !== 2) m.active = 0;
+  if (!m.cus || typeof m.cus !== "object" || Array.isArray(m.cus)) m.cus = {};
+  if (!m.arts || typeof m.arts !== "object" || Array.isArray(m.arts)) m.arts = {};
+  if (!Array.isArray(m.logs) || m.logs.length !== 3) m.logs = [0,1,2].map(i=> Array.isArray(m.logs) && Array.isArray(m.logs[i]) ? m.logs[i].filter(x=>x && typeof x==="object") : []);
+  for (const k in m.arts){
+    const a = m.arts[k];
+    const okRows = a && Array.isArray(a.rows) && a.rows.length === 32 && a.rows.every(r=>typeof r==="string" && r.length===32 && /^[.ABDWEPH]*$/.test(r));
+    const okPng = a && typeof a.png === "string" && /^data:image\/(png|jpeg);base64,/.test(a.png) && a.png.length < 200000;
+    if (!okRows && !okPng) delete m.arts[k];
+  }
+  return m;
+}
 const blinkOf = art => art.map(r=>r.replace(/E/g,"B"));
 const petOn = () => db.settings.petOn !== false;   /* 宠物总开关: 关 = 寄存(数据保留, 不成长不挨饿不消耗) */
 function petDefault(){ return {species:0,custom:null,tint:null,name:"团子",food:2,hunger:70,mood:70,lastOpen:todayStr(),bornAt:Date.now(),strokes:{},starve:0}; }
@@ -2194,8 +2467,8 @@ function petState(){
   if (db.pet.mood < 30) return "sad";
   return "ok";
 }
-function drawPet(cv, opt){
-  const src = petSource(), pal = src.pal;
+function drawPet(cv, opt, srcOverride){
+  const src = srcOverride || petSource(), pal = src.pal;
   const art = opt.f2 && src.art2 ? src.art2 : src.art;
   const dy = (opt.dy||0) + (opt.f2 && src.f2dy || 0);
   const blink = opt.blink, scale = cv.width/32;
@@ -2211,7 +2484,7 @@ function drawPet(cv, opt){
   const paint = art.map((row,y)=>[...row].forEach((ch,x)=>{
     if (ch === ".") return;
     let col = pal[ch] || pal.B;
-    if (ch === "E" && blink) col = pal.B;
+    if (ch === "E" && blink) col = opt.blinkCol || pal.B;
     g.fillStyle = col;
     g.fillRect(x*scale + (opt.dx||0)*scale, (y+dy)*scale, scale, scale);
   }));
@@ -2401,7 +2674,7 @@ function petInteract(fx, say){
   say(Math.random() < .6 ? "stroke" : s);
   save(); renderPet();
 }
-$("#pet-wrap").addEventListener("click", ()=>{ if (buddyOn()) openBuddy(); else petInteract(petFx, petSay); });
+$("#pet-wrap").addEventListener("click", ()=>{ if (mateOn()) petInteract(petFx, petSay); else if (buddyOn()) openBuddy(); else petInteract(petFx, petSay); });
 $("#pet-feed").onclick = ()=>{
   if (db.pet.food <= 0) return;
   if (petStage() === 0){ toast(T("蛋还不需要吃东西"), T("先攒专注让它孵出来")); return; }
@@ -2601,7 +2874,7 @@ function buildPetDesk(){
   });
   d.addEventListener("click", ()=>{
     if (deskSuppressClick){ deskSuppressClick = false; return; }
-    if (buddyOn()) openBuddy(); else petInteract(deskFx, deskSay);
+    if (mateOn()) petInteract(deskFx, deskSay); else if (buddyOn()) openBuddy(); else petInteract(deskFx, deskSay);
   });
   deskRender();
 }
@@ -2627,7 +2900,254 @@ setInterval(()=>{
   if (view === "pet") petRender(false);
   if (petOn()) petRender(true);
   deskRender();
+  mateRender();
 }, 600);
+
+/* ================= 人物伙伴: 桌面人物·三人团 =================
+ * 与桌宠并存——人物=点开即聊(生活向伙伴), 宠物养成线不动;
+ * 人设/形象/聊天记忆按人物独立存 db.mate, 聊天复用管家管线(butlerCfg) */
+function mateOn(){ return db.settings.mate === true; }
+function matePreset(i){ const p = CHAR_PRESETS[i]; return LANG === "en" && p.en ? p.en : p; }
+function mateInfo(i){
+  i = (i === 0 || i === 1 || i === 2) ? i : 0;
+  const cus = db.mate.cus[i] || {}, pre = matePreset(i);
+  return { i, art: MATE_ART[i],
+    name: cus.name || MATE_ART[i].name,
+    rel: cus.rel || pre.rel,
+    bio: cus.bio || pre.bio,
+    tone: cus.tone || pre.tone };
+}
+function mateSys(){
+  const c = mateInfo(db.mate.active);
+  const h = new Date().getHours();
+  const tod = (LANG === "en"
+    ? ["late night","early morning","morning","noon","afternoon","evening","late night"]
+    : ["深夜","清晨","上午","中午","下午","晚上","深夜"])[h<5?0:h<8?1:h<12?2:h<14?3:h<18?4:h<23?5:6];
+  return LANG === "en"
+    ? `You are ${c.name}, the user's ${c.rel} and study companion inside 'Rike', a study planner. Background: ${c.bio} Personality: ${c.tone} It is ${tod} now. Speak first person, warm and brief (within 3 sentences); care about the user's study, meals and rest, like someone living alongside them. When the user wants help planning tasks, end your reply with a \`\`\`rike fenced block, one quick-add line per task (e.g. 19:00-20:30 Math review #math !high), at most 5 lines. Reply in English.`
+    : `你是「日课」里的人物伙伴「${c.name}」（${c.rel}），陪着主人一起学习生活。背景：${c.bio}性格：${c.tone}现在是${tod}。用第一人称回答：像身边人一样温暖简短（三句以内），关心主人的学习、吃饭和休息。主人需要帮忙安排日程时，在回答最后用 \`\`\`rike 代码块给出建议，每行一条速记（例：19:00-20:30 数学分析 #数学 !高），最多 5 条。用中文回答。`;
+}
+let mateSuppressClick = false;
+function buildMate(){
+  if ($("#mate")) return;
+  const d = document.createElement("button");
+  d.id = "mate";
+  d.setAttribute("aria-label", T("人物伙伴"));
+  const c = document.createElement("canvas"); c.width = 96; c.height = 96;
+  const im = document.createElement("img"); im.alt = ""; im.hidden = true;
+  const bub = document.createElement("div"); bub.className = "petbubble"; bub.hidden = true;
+  d.append(c, im, bub);
+  const p = db.mate.pos;
+  if (p){ d.style.left = Math.max(0, Math.min(p.x, innerWidth-68)) + "px"; d.style.top = Math.max(0, Math.min(p.y, innerHeight-68)) + "px"; }
+  else { d.style.left = "18px"; d.style.bottom = "18px"; }
+  document.body.appendChild(d);
+  let drag = null;
+  d.addEventListener("pointerdown", e=>{
+    drag = {x:e.clientX, y:e.clientY, sx:d.offsetLeft, sy:d.offsetTop, moved:false};
+    try{ d.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  d.addEventListener("pointermove", e=>{
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true;
+    if (!drag.moved) return;
+    d.style.left = Math.max(0, Math.min(drag.sx + dx, innerWidth - 68)) + "px";
+    d.style.top = Math.max(0, Math.min(drag.sy + dy, innerHeight - 68)) + "px";
+    d.style.bottom = "auto";
+  });
+  d.addEventListener("pointerup", ()=>{
+    if (drag && drag.moved){
+      db.mate.pos = {x:d.offsetLeft, y:d.offsetTop};
+      save();
+      mateSuppressClick = true;          /* 拖完的这一下 click 不算聊天 */
+      setTimeout(()=>{ mateSuppressClick = false; }, 60);
+    }
+    drag = null;
+  });
+  d.addEventListener("click", ()=>{ if (mateSuppressClick){ mateSuppressClick = false; return; } openBuddy(); });
+  mateRender();
+}
+function mateRender(){
+  const d = $("#mate"); if (!d) return;
+  const i = db.mate.active, a = db.mate.arts[i];
+  const cv = d.querySelector("canvas"), im = d.querySelector("img");
+  const animOn = db.settings.petAnim !== false;
+  const f2 = animOn && (petAnim.n % 4) >= 2;
+  const dy = animOn ? [0,1,2,1][petAnim.n % 4] : 0;
+  const blink = animOn && Date.now() < petAnim.blinkUntil;   /* 人眨眼=闭成肤色 */
+  if (a && a.png){
+    cv.hidden = true; im.hidden = false;
+    if (im.src !== a.png) im.src = a.png;
+    im.style.transform = dy ? `translateY(${dy}px)` : "";
+  } else {
+    im.hidden = true; cv.hidden = false;
+    drawPet(cv, {blink, blinkCol:MATE_ART[i].pal.A, f2: f2 && !a, dy},
+      {art: a && a.rows ? a.rows : MATE_ART[i].art, art2: a && a.rows ? null : MATE_ART[i].art2, f2dy:0, pal:MATE_ART[i].pal});
+  }
+}
+function applyMateUI(){
+  if (mateOn()){ buildMate(); mateRender(); }   /* 已在场也要重绘: PNG↔像素切换即时生效 */
+  else { const d = $("#mate"); if (d) d.remove(); }
+  document.body.classList.toggle("mate-on", mateOn());
+  if (mateOn()) document.body.style.setProperty("--mate-c", MATE_ART[db.mate.active] ? MATE_ART[db.mate.active].main : "#B0766C");
+}
+/* ---------- 人物设置: 当前人物 + 人设覆写 + 三档形象 ---------- */
+function openMateCfg(){
+  const i = db.mate.active, cus = db.mate.cus[i] || {}, a = db.mate.arts[i];
+  const pre = matePreset(i);
+  openModal(`<h3>${T("人物伙伴 · 设置")}</h3>
+    <div class="field full"><label for="mt-char">${T("当前人物")}</label>
+      <select id="mt-char">${MATE_ART.map((m,x)=>`<option value="${x}"${x===i?" selected":""}>${m.name} · ${matePreset(x).rel}</option>`).join("")}</select></div>
+    <div class="mgrid">
+      <div class="field"><label for="mt-name">${T("名字")}</label><input id="mt-name" maxlength="8" value="${esc(cus.name||"")}" placeholder="${esc(MATE_ART[i].name)}"></div>
+      <div class="field"><label for="mt-rel">${T("关系")}</label><input id="mt-rel" maxlength="8" value="${esc(cus.rel||"")}" placeholder="${esc(pre.rel)}"></div>
+    </div>
+    <div class="field full"><label for="mt-tone">${T("性格")}</label><input id="mt-tone" maxlength="20" value="${esc(cus.tone||"")}" placeholder="${esc(pre.tone)}"></div>
+    <div class="field full"><label for="mt-bio">${T("背景故事")}</label><textarea id="mt-bio" rows="3" maxlength="80" placeholder="${esc(pre.bio)}">${esc(cus.bio||"")}</textarea></div>
+    <div style="text-align:center;margin:8px 0 2px;"><canvas id="mt-prev" width="96" height="96"></canvas><img id="mt-previmg" width="96" height="96" hidden alt=""></div>
+    <div class="btnrow" style="justify-content:center;flex-wrap:wrap;">
+      <button class="btn sm" id="mt-preset">${T("预置形象")}</button>
+      <button class="btn sm" id="mt-edit">${T("编辑形象")}</button>
+      <button class="btn sm" id="mt-imp">${T("导入代码")}</button>
+      <button class="btn sm" id="mt-exp">${T("导出代码")}</button>
+      <button class="btn sm" id="mt-png">${T("上传 PNG")}</button>
+    </div>
+    <input type="file" id="mt-file" accept="image/*" hidden>
+    <p class="help">${T("留空则用预置人设；名字/关系/性格/背景随改随存。")}</p>
+    <div class="btnrow"><span style="flex:1;"></span><button class="btn sm pri" id="mt-done">${T("完成")}</button></div>`);
+  const prev = ()=>{
+    const pv = $("#mt-prev"), pi = $("#mt-previmg");
+    if (!pv) return;
+    if (a && a.png){ pv.hidden = true; pi.hidden = false; pi.src = a.png; }
+    else { pi.hidden = true; pv.hidden = false; drawPet(pv, {blink:false,f2:false,dy:0,mat:false},
+      {art:a&&a.rows?a.rows:MATE_ART[i].art, art2:a&&a.rows?null:MATE_ART[i].art2, f2dy:0, pal:MATE_ART[i].pal}); }
+  };
+  prev();
+  $("#mt-char").onchange = e=>{ db.mate.active = +e.target.value; save(); applyMateUI(); closeModal(); openMateCfg(); };
+  const bind = (id, key)=>{
+    const el = $("#"+id);
+    el.oninput = ()=>{
+      const v = el.value.trim();
+      if (v){ db.mate.cus[i] = db.mate.cus[i] || {}; db.mate.cus[i][key] = v; }
+      else if (db.mate.cus[i]){ delete db.mate.cus[i][key]; if (!Object.keys(db.mate.cus[i]).length) delete db.mate.cus[i]; }
+      save(); applyMateUI(); renderButler();
+    };
+  };
+  bind("mt-name","name"); bind("mt-rel","rel"); bind("mt-tone","tone"); bind("mt-bio","bio");
+  $("#mt-preset").onclick = ()=>{ delete db.mate.arts[i]; save(); applyMateUI(); closeModal(); openMateCfg(); };
+  $("#mt-edit").onclick = ()=>openMateEditor(i);
+  $("#mt-imp").onclick = ()=>openMateImport(i);
+  $("#mt-exp").onclick = ()=>{
+    const data = JSON.stringify({v:1, rows: a && a.rows ? a.rows : MATE_ART[i].art});
+    openModal(`<h3>${T("导出人物形象")}</h3>
+      <textarea class="ta mono" id="mtexp" style="min-height:140px;">${esc(data)}</textarea>
+      <div class="btnrow"><button class="btn sm" id="mtexp-x">${T("关闭")}</button><button class="btn sm pri" id="mtexp-cp">${T("复制")}</button></div>`);
+    $("#mtexp-x").onclick = closeModal;
+    $("#mtexp-cp").onclick = ()=>copyTA($("#mtexp"));
+  };
+  $("#mt-png").onclick = ()=>$("#mt-file").click();
+  $("#mt-file").onchange = e=>{
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = ()=>{
+      const im = new Image();
+      im.onload = ()=>{
+        const cv = document.createElement("canvas"); cv.width = 160; cv.height = 160;
+        const g = cv.getContext("2d");
+        const s = Math.max(160/im.width, 160/im.height);   /* cover 裁切到 160×160 */
+        g.drawImage(im, (160-im.width*s)/2, (160-im.height*s)/2, im.width*s, im.height*s);
+        let alpha = false;
+        try{ const d2 = g.getImageData(0,0,160,160).data; for (let p2=3;p2<d2.length;p2+=68){ if (d2[p2] < 250){ alpha = true; break; } } }catch(err){}
+        let uri; try{ uri = alpha ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", .85); }catch(err){ uri = cv.toDataURL("image/png"); }
+        if (uri.length > 120000){ toast(T("图片太大"), T("换一张小一点的图试试"), true); return; }
+        db.mate.arts[i] = { png:uri }; save(); applyMateUI(); closeModal(); openMateCfg();
+        toast(T("形象已更新"), T("看看新模样！"));
+      };
+      im.src = rd.result;
+    };
+    rd.readAsDataURL(f);
+  };
+  $("#mt-done").onclick = closeModal;
+}
+function openMateImport(i){
+  openModal(`<h3>${T("导入人物形象")}</h3>
+    <textarea class="ta mono" id="mtimp" placeholder='${T("粘贴分享的人物形象代码")}' style="min-height:140px;"></textarea>
+    <div class="btnrow"><button class="btn sm" id="mtimp-x">${T("取消")}</button><button class="btn sm pri" id="mtimp-ok">${T("导入")}</button></div>`);
+  $("#mtimp-x").onclick = closeModal;
+  $("#mtimp-ok").onclick = ()=>{
+    try{
+      const d = JSON.parse($("#mtimp").value);
+      const rows = Array.isArray(d) ? d : d.rows;
+      if (!Array.isArray(rows) || rows.length !== 32 || !rows.every(r=>typeof r==="string" && r.length===32 && /^[.ABDWEPH]*$/.test(r))) throw 0;
+      db.mate.arts[i] = { rows }; save(); applyMateUI(); closeModal();
+      toast(T("形象导入成功"), T("看看新伙伴！"));
+    }catch(e){ toast(T("导入失败"), T("代码不是有效的人物形象"), true); }
+  };
+}
+/* 人物像素编辑器(与宠物编辑器同骨架, 人物调色板) */
+function openMateEditor(i){
+  const cur = db.mate.arts[i];
+  const rows = (cur && cur.rows ? cur.rows : MATE_ART[i].art).map(r=>[...r]);
+  let ch = "B";
+  const pal = MATE_ART[i].pal;
+  const colors = {H:pal.H, A:pal.A, B:pal.B, D:pal.D, W:pal.W, E:pal.E, P:pal.P};
+  openModal(`<h3>${T("人物像素编辑器 · 32×32")}</h3>
+    <div class="pxed" id="pxed"></div>
+    <div class="pxpal" id="pxpal"></div>
+    <p class="help" style="text-align:center;">${T("点色板选颜色，按住拖动涂色；「橡皮」擦掉像素。")}</p>
+    <div class="btnrow"><button class="btn sm" id="px-clear">${T("清空")}</button><span style="flex:1;"></span><button class="btn sm" id="px-cancel">${T("取消")}</button><button class="btn sm pri" id="px-save">${T("保存形象")}</button></div>`);
+  const grid = $("#pxed");
+  const cells = [];
+  for (let y=0;y<32;y++) for (let x=0;x<32;x++){
+    const b = document.createElement("button");
+    b.dataset.x = x; b.dataset.y = y;
+    grid.appendChild(b); cells.push(b);
+  }
+  const paint = (x,y)=>{ rows[y][x] = ch; sync(); };
+  const sync = ()=> cells.forEach(b=>{
+    const c = rows[+b.dataset.y][+b.dataset.x];
+    b.style.background = c === "." ? "var(--card2)" : colors[c];
+  });
+  sync();
+  let painting = false;
+  grid.addEventListener("pointerdown", e=>{
+    const b = e.target.closest("button"); if (!b) return;
+    painting = true; grid.setPointerCapture(e.pointerId);
+    paint(+b.dataset.x, +b.dataset.y);
+  });
+  grid.addEventListener("pointermove", e=>{
+    if (!painting) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const b = el && el.closest && el.closest("#pxed button");
+    if (b) paint(+b.dataset.x, +b.dataset.y);
+  });
+  addEventListener("pointerup", ()=>{ painting = false; }, {once:true});
+  const palBox = $("#pxpal");
+  const mkPal = (key,label)=>{
+    const b = document.createElement("button");
+    b.className = key === "." ? "erase" : "";
+    b.style.background = key === "." ? "" : colors[key];
+    b.title = T(label); b.dataset.k = key;
+    palBox.appendChild(b);
+  };
+  Object.keys(colors).forEach(k=>mkPal(k,{H:"头发",A:"皮肤",B:"衣服",D:"深色",W:"白",E:"眼睛",P:"腮红"}[k]));
+  mkPal(".","橡皮");
+  palBox.addEventListener("click", e=>{
+    const b = e.target.closest("button"); if (!b) return;
+    ch = b.dataset.k;
+    palBox.querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b));
+  });
+  palBox.querySelector("button").classList.add("on");
+  $("#px-cancel").onclick = closeModal;
+  $("#px-clear").onclick = ()=>{ for (let y=0;y<32;y++) for (let x=0;x<32;x++) rows[y][x]="."; sync(); };
+  $("#px-save").onclick = ()=>{
+    if (!rows.some(r=>r.some(c=>c!=="."))){ toast(T("画布是空的"), T("至少画一个像素再保存"), true); return; }
+    db.mate.arts[i] = { rows: rows.map(r=>r.join("")) };
+    save(); closeModal(); applyMateUI();
+    toast(T("形象已保存"), T("换上了你画的样子"));
+  };
+}
 
 /* ================= 插件市场 =================
  * 官方模块制: 所有代码都在本文件里, "插件"=可独立启停的功能模块。
@@ -2638,6 +3158,7 @@ const MOD_ICONS = {
   desk: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7.6" stroke-dasharray="2.8 2.4"/><circle cx="8.4" cy="8.4" r="1" fill="currentColor" stroke="none"/><circle cx="11.6" cy="8.4" r="1" fill="currentColor" stroke="none"/><circle cx="6.6" cy="10.7" r=".9" fill="currentColor" stroke="none"/><circle cx="13.4" cy="10.7" r=".9" fill="currentColor" stroke="none"/><path d="M10 11.6c1.6 0 2.7 1.1 2.7 2.2 0 .8-.6 1.3-1.3 1.3-.5 0-1-.3-1.4-.3s-.9.3-1.4.3c-.7 0-1.3-.5-1.3-1.3 0-1.1 1.1-2.2 2.7-2.2z" fill="currentColor" stroke="none"/></svg>',
   heat: '<svg viewBox="0 0 20 20" fill="currentColor"><rect x="3" y="3" width="4" height="4" rx="1" opacity=".3"/><rect x="8" y="3" width="4" height="4" rx="1" opacity=".55"/><rect x="13" y="3" width="4" height="4" rx="1"/><rect x="3" y="8" width="4" height="4" rx="1" opacity=".55"/><rect x="8" y="8" width="4" height="4" rx="1"/><rect x="13" y="8" width="4" height="4" rx="1" opacity=".55"/><rect x="3" y="13" width="4" height="4" rx="1"/><rect x="8" y="13" width="4" height="4" rx="1" opacity=".3"/></svg>',
   butler: '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2.5l1.2 3.1 3.1 1.2-3.1 1.2L10 11.1 8.8 8 5.7 6.8l3.1-1.2L10 2.5z"/><path d="M15.5 11l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" opacity=".7"/><path d="M5 12.5l.6 1.5 1.5.6-1.5.6L5 16.7l-.6-1.5-1.5-.6 1.5-.6.6-1.5z" opacity=".5"/></svg>',
+  mate: '<svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="6" r="3.3"/><path d="M3.8 17c.5-3.4 3.1-5.3 6.2-5.3s5.7 1.9 6.2 5.3c.2.9-.5 1.7-1.4 1.7H5.2c-.9 0-1.6-.8-1.4-1.7z"/></svg>',
 };
 const MODS = [
   { id:"pet", ver:"1.2.0", exp:false, deps:[], icon:MOD_ICONS.pet,
@@ -2652,6 +3173,12 @@ const MODS = [
     on:()=>db.settings.petDesk === true,
     set:v=>{ db.settings.petDesk = v; },
     clearData:()=>{ db.settings.petDeskPos = undefined; } },
+  { id:"mate", ver:"0.1.0", exp:false, deps:[], icon:MOD_ICONS.mate, cfg:true,
+    name:"人物伙伴",
+    desc:"桌面人物伙伴：三位伙伴各有名字、背景与专属主题色，点开即聊；人设与形象都能自定义",
+    on:()=>db.settings.mate === true,
+    set:v=>{ db.settings.mate = v; },
+    clearData:()=>{ db.mate = mateDefault(); } },
   { id:"heat", ver:"0.1.0", exp:true, deps:[], icon:MOD_ICONS.heat,
     name:"专注热力图",
     desc:"统计页显示过去 12 周的专注热力图",
@@ -2713,7 +3240,7 @@ function modSet(m, v){
       }
     }
   }
-  save(); applyPetUI(); renderMods();
+  save(); applyPetUI(); applyMateUI(); renderMods();
   if (m.id === "pet" && m.on()) renderPet();
   if (m.id === "heat") renderStats();
   if (m.id === "butler") applyButler();
@@ -2725,7 +3252,7 @@ $("#v-mods").addEventListener("click", e=>{
   const act = e.target.closest(".modact");
   if (act){ modSet(m, !m.on()); return; }
   const cg = e.target.closest(".modcfg");
-  if (cg){ if (m.id === "butler") openButlerCfg(); return; }
+  if (cg){ if (m.id === "butler") openButlerCfg(); if (m.id === "mate") openMateCfg(); return; }
   const clr = e.target.closest(".modclear");
   if (clr){
     if (card.dataset.arm !== "1"){       /* 二次确认, 4 秒后复原 */
@@ -2735,7 +3262,7 @@ $("#v-mods").addEventListener("click", e=>{
     }
     m.clearData(); save();
     if (m.id === "desk"){ const d = $("#petdesk"); if (d) d.remove(); }   /* 位置记忆一并清, 重建回默认角 */
-    applyPetUI();
+    applyPetUI(); applyMateUI();
     if (m.id === "pet") renderPet();
     renderMods();
     toast(TF("已清除 {n} 的数据", {n:T(m.name)}));
@@ -2755,6 +3282,7 @@ const BUTLER_PRESETS = [
   {n:"自定义", base:"", model:""},
 ];
 const BUTLER = { busy:false, log:[] };   /* log: {q} | {a, err, sug:[{line, used}]} */
+function curLog(){ return mateOn() ? db.mate.logs[db.mate.active] : BUTLER.log; }   /* 人物模式: 每人独立聊天记忆 */
 function butlerOn(){ return db.settings.butler === true; }
 function butlerCfg(){ return db.settings.butlerCfg || {base:"",key:"",model:"",snap:true}; }
 function applyButler(){
@@ -2866,6 +3394,7 @@ function butlerSnap(){
     L.push(`本周专注: 累计${fmtDurH(total)}h，日均${total?fmtDurH(total/7):0}h${perCat.length?"，主要科目: "+perCat.map(x=>`${x.c} ${fmtDurH(x.sec)}h`).join("、"):""}`);
     L.push(`连续打卡: ${streak()} 天`);
     if (miles.length) L.push(`近期里程碑: ${miles.join("；")}`);
+    if (mateOn()){ const c = mateInfo(db.mate.active); L.push(`伙伴: ${c.name}（${c.rel}）`); }
     if (petOn()) L.push(`宠物: ${db.pet.name}（${PET_ART[db.pet.species % PET_ART.length].name}${["蛋","幼年","成年"][petStage()]}，心情${db.pet.mood} 饱食${db.pet.hunger}）`);
     return "【数据摘要】\n" + L.join("\n");
   }catch(e){ return ""; }
@@ -2873,53 +3402,67 @@ function butlerSnap(){
 async function butlerAsk(q){
   const cfg = butlerCfg();
   if (!cfg.base || !cfg.key || !cfg.model){ toast(T("配置不完整"), T("先填 API 地址、Key 与模型"), true); openButlerCfg(); return; }
-  BUTLER.log.push({ q });
+  const log = curLog();
+  log.push({ q });
+  while (log.length > 40) log.shift();
   BUTLER.busy = true;
   renderButler();
   try{
     const snap = cfg.snap !== false ? butlerSnap() + "\n\n" : "";
-    const hist = BUTLER.log.slice(-7, -1).flatMap(m => m.q ? [{role:"user",content:m.q}] : m.a ? [{role:"assistant",content:m.a}] : []);
-    const a = (await butlerChat([{role:"system",content: buddyOn() ? buddySys() : butlerSys()}, ...hist, {role:"user",content:snap+q}])).replace(/\r/g,"");
+    const hist = log.slice(-7, -1).flatMap(m => m.q ? [{role:"user",content:m.q}] : m.a ? [{role:"assistant",content:m.a}] : []);
+    const a = (await butlerChat([{role:"system",content: mateOn() ? mateSys() : buddyOn() ? buddySys() : butlerSys()}, ...hist, {role:"user",content:snap+q}])).replace(/\r/g,"");
     const sug = [];
     const blk = /```rike\n([\s\S]*?)```/.exec(a);
     const text = a.replace(/```rike\n[\s\S]*?```/g, "").trim();
     if (blk) for (const line of blk[1].split("\n")){ const s2 = line.trim(); if (s2) sug.push({ line:s2, used:false }); }
-    BUTLER.log.push({ a:text, sug });
-    if (buddyOn()){ db.pet.mood = Math.min(100, (db.pet.mood||0) + 1); save(); }   /* 聊一轮它也开心 */
+    log.push({ a:text, sug });
+    while (log.length > 40) log.shift();
+    if (mateOn()) save();                              /* 人物聊天记忆落库 */
+    else if (buddyOn()){ db.pet.mood = Math.min(100, (db.pet.mood||0) + 1); save(); }   /* 聊一轮它也开心 */
   }catch(e){
-    BUTLER.log.push({ a:"", err:String(e.message||e) });
+    log.push({ a:"", err:String(e.message||e) });
+    if (mateOn()) save();
   }
   BUTLER.busy = false;
   renderButler();
 }
 function butlerAdopt(i, j){
-  const m = BUTLER.log[i];
+  const m = curLog()[i];
   if (!m || !m.sug || !m.sug[j] || m.sug[j].used) return;
   const t = parseLine(m.sug[j].line);
   if (!t){ toast(T("没看懂这一条"), m.sug[j].line, true); return; }
   purgeSample(); db.tasks.push(t); save();
   renderToday(); renderCal(); updateNext();
   m.sug[j].used = true;
+  if (mateOn()) save();
   renderButler();
   toast(T("已添加"), `${t.start||T("随时")} · ${t.title}`);
 }
 function renderButler(){
   const log = $("#bt-log"); if (!log) return;
   $("#bt-model").textContent = butlerCfg().model || "";
-  /* 搭子皮肤: 管家开×宠物开 → 头部换宠物; 蛋期禁聊只给孵化提示 */
+  /* 皮肤优先级: 人物 > 搭子(宠物) > 管家; 人物常在可聊, 蛋期禁聊只给孵化提示 */
   const cv = $("#bt-petcv");
   if (cv){
-    const skin = buddySkin(), egg = petStage() === 0;
-    cv.hidden = !skin;
-    $("#bt-stroke").hidden = !skin || egg;
-    $("#bt-title").textContent = skin ? db.pet.name : T("AI 管家");
+    const mi = $("#bt-mateimg");
+    const mate = mateOn(), mc = mate ? mateInfo(db.mate.active) : null;
+    const ma = mate ? db.mate.arts[db.mate.active] : null;
+    const mpng = ma && ma.png;
+    const skin = !mate && buddySkin(), egg = !mate && petStage() === 0;
+    cv.hidden = !skin && !(mate && !mpng);
+    if (mi) mi.hidden = !(mate && mpng);
+    $("#bt-stroke").hidden = mate || !skin || egg;
+    $("#bt-title").textContent = mate ? mc.name : skin ? db.pet.name : T("AI 管家");
     $("#bt-in").disabled = skin && egg;
-    $("#bt-in").placeholder = skin && egg ? T("它还没孵出来——先攒专注，孵出来就能聊天啦")
+    $("#bt-in").placeholder = mate ? TF("和 {n} 聊聊：今天想学什么？", {n:mc.name})
+      : skin && egg ? T("它还没孵出来——先攒专注，孵出来就能聊天啦")
       : skin ? T("和它聊聊：今天想学什么？") : T("问问管家：这周学得怎么样？");
-    if (skin) drawPet(cv, {blink:false, f2:false, dy:0, mat:false});
+    if (mate && !mpng) drawPet(cv, {blink:false, f2:false, dy:0, mat:false},
+      {art: ma && ma.rows ? ma.rows : mc.art.art, art2: ma && ma.rows ? null : mc.art.art2, f2dy:0, pal:mc.art.pal});
+    else if (skin) drawPet(cv, {blink:false, f2:false, dy:0, mat:false});
   }
   let html = "";
-  BUTLER.log.forEach((m, i)=>{
+  curLog().forEach((m, i)=>{
     if (m.q) html += `<div class="btm btq">${esc(m.q)}</div>`;
     else if (m.err) html += `<div class="btm bterr">${T("连接失败")} · ${esc(m.err).slice(0,120)}</div>`;
     else {
@@ -4180,6 +4723,7 @@ function tickClock(){
 function renderAll(){
   applyTheme();
   applyPetUI();
+  applyMateUI();
   applyButler();
   renderToday(); renderCal(); renderSessions(); renderStats(); renderSettings(); renderPet(); renderMods(); updateNext(); updatePlanInfo(); setTimerButtons(); renderReadout(); renderPomoChips();
 }
