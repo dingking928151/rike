@@ -542,7 +542,8 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 #mate:active{cursor:grabbing;}
 #mate canvas{width:64px;height:64px;image-rendering:pixelated;}
 #mate img{width:64px;height:64px;border-radius:12px;object-fit:cover;display:block;}
-#mate .petbubble{top:auto;bottom:calc(100% + 9px);max-width:240px;white-space:nowrap;}
+#mate .petbubble{top:auto;bottom:calc(100% + 9px);left:0;transform:none;width:max-content;max-width:240px;text-align:left;}
+#mate .petbubble::after{left:32px;}
 #bt-mateimg{width:36px;height:36px;border-radius:8px;object-fit:cover;flex:none;background:var(--card2);}
 #mt-prev{display:block;margin:0 auto;image-rendering:pixelated;border-radius:10px;background:var(--card2);}
 #mt-previmg{display:block;margin:0 auto;border-radius:10px;object-fit:cover;background:var(--card2);}
@@ -2384,7 +2385,7 @@ const CHAR_PRESETS = [
   { rel:"青梅竹马", bio:"从小一起长大的邻居，嘴上爱损你、心里最挺你，学习上谁也不惯着谁。", tone:"嘴硬心软、爱抬杠、其实很靠谱",
     en:{ rel:"childhood best friend", bio:"Grew up next door; teases you constantly but always has your back, and never lets you slack on study.", tone:"sharp-tongued, soft-hearted, secretly reliable" } },
 ];
-function mateDefault(){ return { active:0, cus:{}, arts:{}, pos:null, logs:[[],[],[]] }; }
+function mateDefault(){ return { active:0, cus:{}, arts:{}, pos:null, logs:[[],[],[]], say:{d:"",meals:"",mile:false} }; }
 function fixMate(m){
   const d = mateDefault();
   m = m && typeof m === "object" ? m : {};
@@ -2399,6 +2400,8 @@ function fixMate(m){
     const okPng = a && typeof a.png === "string" && /^data:image\/(png|jpeg);base64,/.test(a.png) && a.png.length < 200000;
     if (!okRows && !okPng) delete m.arts[k];
   }
+  if (!m.say || typeof m.say !== "object" || Array.isArray(m.say)) m.say = {d:"",meals:"",mile:false};
+  else m.say = { d:String(m.say.d||""), meals:String(m.say.meals||"").replace(/[^bld]/g,""), mile: m.say.mile === true };
   return m;
 }
 const blinkOf = art => art.map(r=>r.replace(/E/g,"B"));
@@ -2901,6 +2904,7 @@ setInterval(()=>{
   if (petOn()) petRender(true);
   deskRender();
   mateRender();
+  mateLifeTick();
 }, 600);
 
 /* ================= 人物伙伴: 桌面人物·三人团 =================
@@ -2917,12 +2921,15 @@ function mateInfo(i){
     bio: cus.bio || pre.bio,
     tone: cus.tone || pre.tone };
 }
+function mateTodIdx(){ const h = new Date().getHours(); return h<5?0:h<8?1:h<12?2:h<14?3:h<18?4:h<23?5:6; }
+function mateTod(){
+  return (LANG === "en"
+    ? ["late night","early morning","morning","noon","afternoon","evening","late night"]
+    : ["深夜","清晨","上午","中午","下午","晚上","深夜"])[mateTodIdx()];
+}
 function mateSys(){
   const c = mateInfo(db.mate.active);
-  const h = new Date().getHours();
-  const tod = (LANG === "en"
-    ? ["late night","early morning","morning","noon","afternoon","evening","late night"]
-    : ["深夜","清晨","上午","中午","下午","晚上","深夜"])[h<5?0:h<8?1:h<12?2:h<14?3:h<18?4:h<23?5:6];
+  const tod = mateTod();
   return LANG === "en"
     ? `You are ${c.name}, the user's ${c.rel} and study companion inside 'Rike', a study planner. Background: ${c.bio} Personality: ${c.tone} It is ${tod} now. Speak first person, warm and brief (within 3 sentences); care about the user's study, meals and rest, like someone living alongside them. When the user wants help planning tasks, end your reply with a \`\`\`rike fenced block, one quick-add line per task (e.g. 19:00-20:30 Math review #math !high), at most 5 lines. Reply in English.`
     : `你是「日课」里的人物伙伴「${c.name}」（${c.rel}），陪着主人一起学习生活。背景：${c.bio}性格：${c.tone}现在是${tod}。用第一人称回答：像身边人一样温暖简短（三句以内），关心主人的学习、吃饭和休息。主人需要帮忙安排日程时，在回答最后用 \`\`\`rike 代码块给出建议，每行一条速记（例：19:00-20:30 数学分析 #数学 !高），最多 5 条。用中文回答。`;
@@ -2986,10 +2993,165 @@ function mateRender(){
   }
 }
 function applyMateUI(){
-  if (mateOn()){ buildMate(); mateRender(); }   /* 已在场也要重绘: PNG↔像素切换即时生效 */
+  if (mateOn()){
+    buildMate(); mateRender();                    /* 已在场也要重绘: PNG↔像素切换即时生效 */
+    const gk = mateTodIdx() + ":" + db.mate.active;
+    if (gk !== mateGreetKey){ mateGreetKey = gk; setTimeout(mateGreet, 900); }   /* 上场/换人/跨时段: 打一次招呼 */
+  }
   else { const d = $("#mate"); if (d) d.remove(); }
   document.body.classList.toggle("mate-on", mateOn());
   if (mateOn()) document.body.style.setProperty("--mate-c", MATE_ART[db.mate.active] ? MATE_ART[db.mate.active].main : "#B0766C");
+}
+/* ---------- 生活场景: 时段问候 + 三餐提醒 + 里程碑打气 (全本地台词, 零打扰) ----------
+ * 问候 = 上场/换人物/跨时段各一次; 三餐每餐每天一次(窗口 早7-9 午11-14 晚17-20);
+ * 里程碑 7 天内每天一次; 两条台词至少隔 45s, 生活检查每 20s 一次 */
+const MATE_LINES = [
+  { greet:{ zh:[
+      ["这么晚还没睡呀……我陪你看完这一段，就一定要去休息了。","夜太深了，眼睛都开始抗议啦——再学一小会儿，就去睡好不好？"],
+      ["早起啦？先喝口温水，我慢慢陪你醒过来。","清晨的脑子最清楚了，今天的硬骨头趁早啃。"],
+      ["上午好～我把今天的书都摆好了，先从最难的那科开始？","上午的光最好啦，坐直一点，我们慢慢来。"],
+      ["中午好，别急着赶任务——吃完饭散散步，下午更有劲。","午饭后容易犯困，眯十五分钟，到时候我叫你。"],
+      ["下午好呀，茶续上了吗？我们接着来。","下午容易走神，先做一件五分钟的小事热热身。"],
+      ["晚上好，今天辛苦啦——晚上的时间，安心交给你自己。","晚上啦～我在旁边泡了杯热的，今晚想先学哪科？"],
+      ["十一点多了……到这里今天已经很棒了，收尾去休息吧。","再学最后一小段就睡，我帮你看着时间呢。"] ],
+      en:[
+      ["Still up this late... I'll sit with you through this one part, then you really must rest, okay?","It's the dead of night — your eyes are protesting. A little more, then sleep?"],
+      ["Up early? Sip some warm water first; I'll ease you into the day.","Morning minds are the clearest — save the hardest part for now."],
+      ["Good morning~ your books are all laid out. Toughest subject first?","Morning light is the kindest. Sit up straight, we'll take it slow."],
+      ["Good noon — don't rush back to tasks; a walk after lunch does wonders.","Post-lunch drowsiness is real. A fifteen-minute nap — I'll wake you."],
+      ["Good afternoon~ tea refilled? Let's keep going.","Afternoons wander. Try one five-minute task to get back in focus."],
+      ["Good evening. You worked hard today — this time is your own.","Evening~ I made a warm drink. Which subject shall we start with?"],
+      ["Past eleven... stopping here today is already lovely. Wrap up and rest.","One last short stretch, then sleep — I'm watching the clock for you."] ] },
+    meal:{ zh:[
+      ["早餐吃了吗？空着肚子可写不动字的。","先去吃早饭吧，我给你留着座。"],
+      ["到饭点啦——午饭要好好吃，别拿零食糊弄自己。","去吃午饭吧，学了一上午，值得一顿好吃的。"],
+      ["晚饭时间到，吃完我们再战。","该吃晚饭了——今晚想吃什么？我陪你一起想。"] ],
+      en:[
+      ["Have you had breakfast? An empty stomach can't write a word.","Go eat first — I'll save your seat."],
+      ["Lunchtime! Eat properly — no snacking your way through.","Go have lunch; a whole morning's work deserves a good meal."],
+      ["Dinner time. We'll get back to it after.","Dinner's on — what do you feel like tonight? Let's think together."] ] },
+    mile:{ zh:[
+      "「{t}」还有 {n} 天，别慌，我们一天一天把它过扎实。",
+      "看了下计划，「{t}」快到了——今天走的每一步都算数。" ],
+      en:[
+      "{t} in {n} days — no panic. We'll make each day solid.",
+      "Checked the plan: {t} is close. Every step today counts toward it." ] },
+    mile0:{ zh:[
+      "今天就是「{t}」了。深呼吸，你准备过的每一天，都在替你撑着。" ],
+      en:[
+      "Today is {t}. Deep breath — every day you prepared is holding you up." ] } },
+  { greet:{ zh:[
+      ["哟，还没睡？行——最后一波，做完这题就撤！","深夜党是吧？我陪你冲完这段，明天记得补觉！"],
+      ["早起的人运气不会差！走，趁状态最好的时候开干！","早啊！先活动两下醒醒神，今天必定高效！"],
+      ["上午好！脑子最灵的时段，挑最硬的骨头啃！","太阳都晒进来了，还等什么——开局！"],
+      ["中午啦！先去干饭，吃饱了下午才有力气冲刺！","充电时间！吃完别硬撑，眯一会儿下午更猛。"],
+      ["下午好！正是出活的好时候——热热身，冲一波！","下午犯困？站起来蹦两下，回来又是条好汉！"],
+      ["晚上好！今晚打算冲到几点？我先陪你热个身！","晚上正式学习黄金档——今晚也要元气满满！"],
+      ["快十二点了，收工收工，明天见！","今天的额度用完啦——睡前别想题，好好休息！"] ],
+      en:[
+      ["Whoa, still up? Fine — one last sprint, this problem and we're out!","Night owl mode? I'll push through this with you, then sleep in tomorrow!"],
+      ["Early birds get the wins! Let's start at peak form!","Morning! Move around a bit to wake up — today's gonna be efficient!"],
+      ["Good morning! Sharpest hours of the day — tackle the hardest bone!","Sun's already in — what are we waiting for? Let's go!"],
+      ["Noon! Refuel time — a full stomach powers the afternoon sprint!","Recharge break! Don't push through; a quick nap makes you sharper."],
+      ["Good afternoon! Prime output hours — warm up and charge!","Afternoon slump? Stand up, jump twice, come back a champ!"],
+      ["Evening! How late are we going tonight? I'll warm up with you!","Evening — prime study hours. Full energy tonight!"],
+      ["Almost midnight — wrap it up, see you tomorrow!","Today's quota is spent. No puzzles before bed — rest well!"] ] },
+    meal:{ zh:[
+      ["早饭必须吃！不吃早饭的学长会变成反面教材的！","先去吃早饭，回来咱们大战三百回合！"],
+      ["午饭时间！人是铁饭是钢——冲食堂！","学了一上午可别忘吃饭，走走走，去吃饭！"],
+      ["晚饭时间到！吃完出去走两圈，回来效率翻倍！","该吃晚饭了，吃饱了才有力气继续冲！"] ],
+      en:[
+      ["Breakfast is non-negotiable! Skip it and you become the cautionary tale!","Go eat breakfast now — we battle three rounds after!"],
+      ["Lunch! You can't grind on an empty tank — canteen, go!","A whole morning of work deserves lunch. Move, move!"],
+      ["Dinner time! A walk after, and your evening doubles in efficiency!","Dinner! Fuel up — can't sprint on empty!"] ] },
+    mile:{ zh:[
+      "「{t}」还有 {n} 天——热身够了，正式冲刺开始！",
+      "看好了，「{t}」就剩 {n} 天，节奏稳住，直接赢！" ],
+      en:[
+      "{t} in {n} days — warm-up done, official sprint starts now!",
+      "Watch this: only {n} days to {t}. Steady rhythm, and we win." ] },
+    mile0:{ zh:[
+      "今天就是「{t}」！这就是你练了这么久的舞台——放手冲！" ],
+      en:[
+      "Today is {t}! This is the stage you trained for — go all out!" ] } },
+  { greet:{ zh:[
+      ["喂，都几点了还不睡？我可要生气啦。","又熬夜？说好的早睡呢……算了算了，就这一段，我陪着你。"],
+      ["哇，你起这么早？太阳打西边出来了……早安呀！","早！我把最好的清醒时段给你留着呢，快用起来。"],
+      ["上午好呀～今天也一起学，不许开小差哦。","上午的大好时光——学完这波，咱们歇一会儿。"],
+      ["中午啦中午啦，肚子是不是已经在叫了？","午休午休！你要是不困，我就缠着你聊天。"],
+      ["下午好～困了就说，别硬撑，我可是盯着你的。","下午茶时间要不要？喝口甜的，继续继续。"],
+      ["晚上好呀，今天过得怎么样？先跟我说两句嘛。","晚上啦，今晚的目标定了吗？定个小点的，不许贪多。"],
+      ["快十二点啦——明日复明日，明天请早！","再不睡我可要把你的书合上咯——开玩笑的，最后一段啦。"] ],
+      en:[
+      ["Hey, what time is it and you're still up? I'm getting mad, you know.","Late night again? What happened to sleeping early... fine, just this stretch — I'm with you."],
+      ["Wow, up this early? Pigs might fly... morning!","Morning! I saved you the best clear-headed hours — use them well."],
+      ["Morning~ study together today, and no zoning out, deal?","Lovely morning hours — finish this stretch and we'll take a break."],
+      ["Noon, noon! Is your stomach growling yet?","Nap break! If you're not sleepy, I'll just pester you with chat."],
+      ["Afternoon~ say it if you're sleepy, no pretending — I'm watching you.","Tea time? Something sweet, then back at it."],
+      ["Evening! How was your day? Tell me two things first.","Evening~ set tonight's goal yet? A small one — no being greedy."],
+      ["Almost midnight — tomorrow, early, deal?","Sleep, or I'm closing your book for you — kidding! Last stretch."] ] },
+    meal:{ zh:[
+      ["早饭！我盯着的哦，不许空着肚子学。","吃早饭了吗？没吃的话现在就去，我等你。"],
+      ["到点吃饭！天大的事也没有干饭重要，快去！","午饭午饭！再学我可要把你拖去食堂了。"],
+      ["晚饭时间去！吃完回来我夸你。","该吃晚饭啦，今天想吃点什么好的？"] ],
+      en:[
+      ["Breakfast! I'm watching you — no studying on an empty stomach.","Eaten yet? If not, go right now. I'll wait."],
+      ["Time to eat! Nothing outranks lunch — go!","Lunch, lunch! Keep this up and I'm dragging you to the canteen."],
+      ["Dinner time! Come back and I'll praise you.","Dinner! Anything nice tonight? You've earned it."] ] },
+    mile:{ zh:[
+      "「{t}」就剩 {n} 天了，紧张吗？我陪着你呢。",
+      "我数着呢，「{t}」还有 {n} 天——你只管往前走。" ],
+      en:[
+      "Only {n} days to {t} — nervous? I'm right here.",
+      "I'm counting: {n} days to {t}. You just keep walking." ] },
+    mile0:{ zh:[
+      "今天就是「{t}」啦！别怕，你从头到尾的努力我都看见了。" ],
+      en:[
+      "Today is {t}! Don't be scared — I've seen every bit of your hard work." ] } },
+];
+function mateLine(kind, slot){                     /* 取一句生活台词: greet 带 0-6 槽, meal 带 0-2 槽, mile 不带 */
+  const set = MATE_LINES[(db.mate.active===1||db.mate.active===2)?db.mate.active:0][kind];
+  const arr = LANG === "en" ? set.en : set.zh;
+  const pool = slot === undefined ? arr : arr[slot];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+let mateSayTimer = 0, mateSaidAt = 0, mateGreetKey = "", mateLifeAt = 0;
+function mateSay(text){
+  const b = $("#mate .petbubble");
+  if (!b || !mateOn()) return;
+  b.textContent = text; b.hidden = false;
+  b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
+  clearTimeout(mateSayTimer);
+  mateSayTimer = setTimeout(()=>{ b.hidden = true; }, 4200);
+  mateSaidAt = Date.now();
+}
+function mateGreet(){
+  if (!mateOn() || !$("#mate")) return;
+  mateSay(mateLine("greet", mateTodIdx()));
+}
+function mateLifeTick(now){                        /* now 可注入(测试), 默认真实时间 */
+  if (!mateOn() || !$("#mate")) return;
+  const t = Date.now();
+  if (t - mateLifeAt < 20000) return;
+  mateLifeAt = t;
+  const s = db.mate.say;
+  if (s.d !== todayStr()){ s.d = todayStr(); s.meals = ""; s.mile = false; }
+  if (t - mateSaidAt < 45000) return;               /* 刚说过话(含问候)先不打扰 */
+  now = now || new Date();
+  const h = now.getHours();
+  const meal = (h>=7 && h<9) ? 0 : (h>=11 && h<14) ? 1 : (h>=17 && h<20) ? 2 : -1;
+  if (meal >= 0 && !s.meals.includes("bld"[meal])){
+    s.meals += "bld"[meal]; save();
+    mateSay(mateLine("meal", meal));
+    return;
+  }
+  if (!s.mile){
+    const m = milesLeft()[0];
+    if (m && m.left <= 7){
+      s.mile = true; save();
+      mateSay(mateLine(m.left === 0 ? "mile0" : "mile").replace(/\{t\}/g, m.txt).replace(/\{n\}/g, m.left));
+    }
+  }
 }
 /* ---------- 人物设置: 当前人物 + 人设覆写 + 三档形象 ---------- */
 function openMateCfg(){
