@@ -209,6 +209,8 @@ html[data-style="ap"] :is(.btn,.navbtn):active{transform:scale(.96);}
 }
 /* ---------- shell ---------- */
 .app{display:grid;grid-template-columns:222px 1fr;min-height:100%;}
+.app>*{min-width:0;}                                /* grid 子项默认 min-width:auto 会被内容撑出横向滚动, 必须归零 */
+.todaygrid>*,.timerwrap>*,.petgrid>*{min-width:0;}
 .side{
   position:sticky;top:0;height:100vh;box-sizing:border-box;
   display:flex;flex-direction:column;gap:4px;
@@ -475,6 +477,7 @@ select.seg{border-radius:9px;border:1px solid var(--hair);background:var(--card)
 /* ---------- 外观 / 科目编辑 ---------- */
 #cat-edit{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .catrow-edit{display:flex;align-items:center;gap:6px;}
+.snaprow{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--hair);font-size:13px;color:var(--ink2);}
 .catcol{width:30px;height:30px;padding:0;border:1px solid var(--hair);border-radius:8px;background:var(--card);cursor:pointer;}
 .catcol::-webkit-color-swatch-wrapper{padding:2px;}
 .catcol::-webkit-color-swatch{border:none;border-radius:5px;}
@@ -1028,6 +1031,11 @@ body.nowbar-on #butler-fab{bottom:142px}
           <button class="btn sm pri" id="s-import-btn">导入并覆盖</button>
           <button class="btn sm warn" id="s-clear">清空全部数据</button>
         </div>
+        <div style="margin-top:16px;border-top:1px dashed var(--hair);padding-top:12px;">
+          <b id="s-snap-h">自动快照</b>
+          <p class="help" style="margin:6px 0 8px;" id="s-snap-help">每天自动存一份、清空或导入前强制存一份，保留最近 5 份。只防应用内误删——浏览器清缓存时快照会一起没了。</p>
+          <div id="s-snaps"></div>
+        </div>
       </div>
     </section>
   </main>
@@ -1195,6 +1203,17 @@ const I18N = { en: {
   "把之前备份的 JSON 粘贴到这里，然后点「导入并覆盖」": "Paste a previously backed-up JSON here, then “Import & overwrite”",
   "导入并覆盖": "Import & overwrite",
   "清空全部数据": "Clear all data",
+  "自动快照": "Auto snapshots",
+  "每天自动存一份、清空或导入前强制存一份，保留最近 5 份。只防应用内误删——浏览器清缓存时快照会一起没了。": "Saves one snapshot daily (plus a forced one before clearing or importing), keeping the last 5. Only guards against in-app mistakes — clearing browser data wipes snapshots too.",
+  "暂无快照——明天打开时会自动存第一份": "No snapshots yet — the first one arrives tomorrow",
+  "此浏览器不支持自动快照": "Auto snapshots unavailable in this browser",
+  "恢复": "Restore",
+  "再点一次确认恢复": "Tap again to confirm",
+  "已恢复到快照": "Restored to snapshot",
+  "恢复失败": "Restore failed",
+  "快照数据已损坏": "Snapshot data is corrupted",
+  "每日": "daily", "清空前": "before clear", "导入前": "before import",
+  "条日程": "tasks",
   "示例数据": "sample data",
   "当前展示的是": "Currently showing",
   "，添加你自己的第一条日程后会自动替换": " — it's replaced once you add your own first task",
@@ -2997,7 +3016,7 @@ function buildMate(){
   d.append(c, im, bub);
   const p = db.mate.pos;
   if (p){ d.style.left = Math.max(0, Math.min(p.x, innerWidth-68)) + "px"; d.style.top = Math.max(0, Math.min(p.y, innerHeight-68)) + "px"; }
-  else { d.style.left = "18px"; d.style.bottom = "18px"; }
+  else { d.style.right = "76px"; d.style.bottom = "18px"; }   /* 默认与桌宠并排成底部 dock, 不再压侧栏备份/恢复按钮 */
   document.body.appendChild(d);
   let drag = null;
   d.addEventListener("pointerdown", e=>{
@@ -3009,6 +3028,7 @@ function buildMate(){
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true;
     if (!drag.moved) return;
+    d.style.right = "auto";
     d.style.left = Math.max(0, Math.min(drag.sx + dx, innerWidth - 68)) + "px";
     d.style.top = Math.max(0, Math.min(drag.sy + dy, innerHeight - 68)) + "px";
     d.style.bottom = "auto";
@@ -3194,7 +3214,9 @@ function mateSay(text){
   const b = $("#mate .petbubble");
   if (!b || !mateOn()) return;
   b.textContent = text; b.hidden = false;
-  b.classList.toggle("bflip", b.getBoundingClientRect().right > innerWidth - 8);   /* 人物贴右缘时气泡翻到左侧展开 */
+  const mr = $("#mate").getBoundingClientRect();                 /* 用人物自身位置静态预判: 气泡 max宽240 从人物左缘展开会出屏就翻
+                                                                   (不读气泡自身 rect — petpop 动画的 scale 超调帧会污染读数) */
+  b.classList.toggle("bflip", mr.left > innerWidth - 248);
   b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
   clearTimeout(mateSayTimer);
   mateSayTimer = setTimeout(()=>{ b.hidden = true; }, 4200);
@@ -3549,6 +3571,7 @@ $("#v-mods").addEventListener("click", e=>{
     }
     m.clearData(); save();
     if (m.id === "desk"){ const d = $("#petdesk"); if (d) d.remove(); }   /* 位置记忆一并清, 重建回默认角 */
+    if (m.id === "mate"){ const d = $("#mate"); if (d) d.remove(); }      /* 同理: 位置记忆清了 DOM 也要重建 */
     applyPetUI(); applyMateUI();
     if (m.id === "pet") renderPet();
     renderMods();
@@ -3869,6 +3892,7 @@ function showView(v){
   if (v === "timer") renderSessions();
   if (v === "pet"){ renderPet(); if (Math.random() < .5) petSay(petState()); }
   if (v === "mods") renderMods();
+  if (v === "set") renderSettings();      /* 进设置页刷新: 导出 JSON 与快照列表都用当前最新数据 */
 }
 $("#nav").addEventListener("click", e=>{ const b = e.target.closest(".navbtn"); if (b) showView(b.dataset.v); });
 $("#tabbar").addEventListener("click", e=>{ const b = e.target.closest("button"); if (b) showView(b.dataset.v); });
@@ -4445,15 +4469,17 @@ function nowbarTick(){
   nowbarPetBump(show);
 }
 function nowbarPetBump(on){
-  const pd = $("#petdesk"); if (!pd) return;
-  if (on){
-    if (pd.style.bottom && pd.style.bottom !== "auto" && !pd.style.top){
-      if (!pd.dataset.baseBottom) pd.dataset.baseBottom = pd.style.bottom;
-      pd.style.bottom = (parseFloat(pd.dataset.baseBottom) + 58) + "px";
+  for (const el of [$("#petdesk"), $("#mate")]){   /* 底部 dock 的桌宠+人物都要避让 nowbar */
+    if (!el) continue;
+    if (on){
+      if (el.style.bottom && el.style.bottom !== "auto" && !el.style.top){
+        if (!el.dataset.baseBottom) el.dataset.baseBottom = el.style.bottom;
+        el.style.bottom = (parseFloat(el.dataset.baseBottom) + 58) + "px";
+      }
+    } else if (el.dataset.baseBottom && !el.style.top){
+      el.style.bottom = el.dataset.baseBottom;
+      delete el.dataset.baseBottom;
     }
-  } else if (pd.dataset.baseBottom && !pd.style.top){
-    pd.style.bottom = pd.dataset.baseBottom;
-    delete pd.dataset.baseBottom;
   }
 }
 $("#nowbar-main").onclick = ()=>{ const a = $("#nowbar-acts"); a.hidden = !a.hidden; };
@@ -4861,6 +4887,67 @@ function renderStyleSw(){
     db.settings.style = b.dataset.v; save(); applyTheme(); renderSettings();
   });
 }
+/* ================= 自动快照 (IndexedDB rike-snap, 防应用内误删/坏导入/升级翻车) =================
+ * 边界要诚实: 快照和主数据同住这个浏览器, 清缓存/无痕模式两者一起没 — 换设备仍靠 JSON 备份 */
+const SNAP_DB = "rike-snap", SNAP_KEEP = 5;
+function snapOpen(){
+  return new Promise(res=>{
+    try{
+      const rq = indexedDB.open(SNAP_DB, 1);
+      rq.onupgradeneeded = ()=>{ try{ rq.result.createObjectStore("snaps", {keyPath:"ts"}); }catch(e){} };
+      rq.onsuccess = ()=>res(rq.result);
+      rq.onerror = ()=>res(null);
+    }catch(e){ res(null); }
+  });
+}
+async function snapWrite(reason){
+  const payload = JSON.stringify(db), n = db.tasks.length;   /* 同步先拍: 清空/导入紧跟其后换掉 db */
+  const idb = await snapOpen(); if (!idb) return;
+  try{
+    await new Promise(res=>{ const tx = idb.transaction("snaps","readwrite");
+      tx.objectStore("snaps").put({ts:Date.now(), reason, n, data:payload});
+      tx.oncomplete = tx.onerror = tx.onabort = res; });
+    const keys = await new Promise(res=>{ const q = idb.transaction("snaps","readonly").objectStore("snaps").getAllKeys();
+      q.onsuccess = ()=>res(q.result||[]); q.onerror = ()=>res([]); });
+    if (keys.length > SNAP_KEEP){                            /* 滚动清老, 只留最近 5 份 */
+      const tx = idb.transaction("snaps","readwrite"), st = tx.objectStore("snaps");
+      keys.sort((a,b)=>a-b).slice(0, keys.length-SNAP_KEEP).forEach(k=>st.delete(k));
+    }
+  }catch(e){}finally{ idb.close(); }
+}
+async function snapList(){
+  const idb = await snapOpen(); if (!idb) return null;
+  const list = await new Promise(res=>{ const q = idb.transaction("snaps","readonly").objectStore("snaps").getAll();
+    q.onsuccess = ()=>res(q.result||[]); q.onerror = ()=>res([]); });
+  idb.close();
+  return list.sort((a,b)=>b.ts-a.ts);
+}
+const SNAP_REASON = {boot:"每日", clear:"清空前", import:"导入前"};
+let snapArm = 0;
+async function renderSnaps(){
+  const box = $("#s-snaps"); if (!box) return;
+  const list = await snapList();
+  if (list === null){ box.innerHTML = `<span style="font-size:13px;color:var(--muted);">${T("此浏览器不支持自动快照")}</span>`; return; }
+  if (!list.length){ box.innerHTML = `<span style="font-size:13px;color:var(--muted);">${T("暂无快照——明天打开时会自动存第一份")}</span>`; return; }
+  box.innerHTML = list.map(s=>{
+    const d = new Date(s.ts);
+    const label = `${d.getMonth()+1}-${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())} · ${esc(T(SNAP_REASON[s.reason]||String(s.reason||"")))} · ${s.n||0} ${T("条日程")}`;
+    return `<div class="snaprow"><span>${label}</span><button class="btn sm${snapArm===s.ts?" warn":""}" data-snap="${s.ts}">${snapArm===s.ts?T("再点一次确认恢复"):T("恢复")}</button></div>`;
+  }).join("");
+}
+$("#s-snaps").addEventListener("click", async e=>{
+  const b = e.target.closest("[data-snap]"); if (!b) return;
+  const ts = +b.dataset.snap;
+  if (snapArm !== ts){ snapArm = ts; renderSnaps(); setTimeout(()=>{ if (snapArm===ts){ snapArm = 0; renderSnaps(); } }, 4000); return; }
+  snapArm = 0;
+  const list = await snapList(); const s = list && list.find(x=>x.ts===ts);
+  if (!s){ renderSnaps(); return; }
+  try{
+    if (!applyImport(JSON.parse(s.data))) throw 0;
+    toast(T("已恢复到快照"), TF("{t} 条日程 · {s} 条记录",{t:db.tasks.length, s:db.sessions.length}));
+  }catch(err){ toast(T("恢复失败"), T("快照数据已损坏"), true); }
+  renderSettings();
+});
 function renderSettings(){
   $("#s-lang").value = LANG;
   $("#s-ahead").value = String(db.settings.ahead);
@@ -4894,6 +4981,7 @@ function renderSettings(){
      <button class="iconbtn catdel" data-cd="${i}" aria-label="${TF("删除科目{n}",{n:i+1})}"><svg class="i" style="width:15px;height:15px" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button></span>`).join("")
     + `<button class="btn sm" id="cat-add">${T("＋ 添加科目")}</button>`;
   $("#s-export").value = JSON.stringify(db);
+  renderSnaps();
 }
 $("#s-lang").onchange = e=>{
   db.settings.lang = e.target.value === "en" ? "en" : "zh";
@@ -4977,21 +5065,27 @@ $("#cat-edit").addEventListener("click", e=>{
 });
 $("#s-copy").onclick = ()=>copyTA($("#s-export"));
 $("#s-refresh").onclick = ()=>{ $("#s-export").value = JSON.stringify(db); toast(T("已刷新")); };
+function applyImport(d){                       /* 导入与快照恢复共用的验证+消毒+落地 */
+  if (!d || !Array.isArray(d.tasks) || !Array.isArray(d.sessions)) return false;
+  db = d;
+  db.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
+  db.pet = fixPet(db.pet);
+  db.fired = db.fired||{}; db.timer = db.timer||null;
+  save(); renderAll();
+  return true;
+}
 $("#s-import-btn").onclick = ()=>{
   try{
     const d = JSON.parse($("#s-import").value);
-    if (!d || !Array.isArray(d.tasks) || !Array.isArray(d.sessions)) throw 0;
-    db = d;
-    db.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,pw:25,pr:5,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""}, db.settings||{});
-    db.pet = fixPet(db.pet);
-    db.fired = db.fired||{}; db.timer = db.timer||null;
-    save(); renderAll();
+    snapWrite("import");                       /* 覆盖前先拍快照(同步拍的是旧数据), 坏 JSON 到不了这 */
+    if (!applyImport(d)) throw 0;
     toast(T("导入成功"), TF("{t} 条日程 · {s} 条记录",{t:db.tasks.length, s:db.sessions.length}));
   }catch(e){ toast(T("导入失败"),T("内容不是有效的日课备份 JSON"),true); }
 };
 let clearArm = false;
 $("#s-clear").onclick = ()=>{
   if (!clearArm){ clearArm = true; $("#s-clear").textContent = T("再点一次确认清空"); setTimeout(()=>{ clearArm=false; $("#s-clear").textContent = T("清空全部数据"); }, 4000); return; }
+  snapWrite("clear");                          /* 清空前强制拍一份, 反悔可回滚 */
   db = seed(); db.sample = false; db.tasks = []; db.sessions = [];
   save(); renderAll(); renderSettings();
   $("#s-clear").textContent = T("清空全部数据"); clearArm = false;
@@ -5019,6 +5113,14 @@ tickClock(); setInterval(tickClock, 1000);
 if (!petOn() && view === "pet") view = "today";
 renderAll();
 showView(view);
+setTimeout(()=>{                                  /* 开机 3 秒后异步写每日快照: 距上一份超 24h 才写, 不卡启动 */
+  /* 盖章存独立 LS 键而非写回主库: 这里若 save() 会把本页内存态整包盖回 localStorage,
+     踩掉别的标签页在这 3 秒里写入的数据 (双开标签/自动化测试都会中招) */
+  if (Date.now() - (+localStorage.getItem("rike-snapAt")||0) > 864e5){
+    try{ localStorage.setItem("rike-snapAt", String(Date.now())); }catch(e){}
+    snapWrite("boot");
+  }
+}, 3000);
 if (tState() && !tState().doneAt && !tState().pausedAt) setTimerButtons();
 
 /* ---------- PWA: 只在安全上下文注册(https/localhost), file:// 与局域网 http 静默跳过 ---------- */
