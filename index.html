@@ -448,6 +448,13 @@ input:hover,select:hover,textarea:hover{border-color:var(--accent-line);}
 .catrow .track{flex:1;height:15px;border-radius:0 4px 4px 0;position:relative;}
 .catrow .track i{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0;min-width:2px;}
 .catrow .val{width:66px;flex:none;text-align:right;font-size:12.5px;color:var(--ink2);}
+.trendtop{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.trendkpi{flex:1;min-width:118px;padding:10px 12px;border:1px solid var(--hair2);border-radius:10px;background:color-mix(in srgb,var(--ink) 2%,var(--card));}
+.trendkpi .lb{font-size:11px;color:var(--ink2);}
+.trendkpi .v{font-size:17px;font-weight:600;margin:3px 0 1px;}
+.trendkpi .v small{font-size:11px;color:var(--ink2);margin-left:2px;font-weight:400;}
+.trendkpi .sub{font-size:11px;color:var(--ink2);}
+.tup{color:#2e9e5b;font-weight:600}.tdn{color:#e5484d;font-weight:600}.teq{color:var(--ink2);}
 .badgegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:10px;}
 .badge{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px 10px;border:1px solid var(--hair);border-radius:14px;background:var(--card2);text-align:center;}
 .badge .bi{font-size:26px;line-height:1;}
@@ -790,6 +797,12 @@ body.nowbar-on #butler-fab{bottom:142px}
           <h3>本周科目分布</h3>
           <div class="catbars" id="catbars"></div>
           <div class="empty" id="cat-empty" hidden>本周还没有记录</div>
+        </div>
+        <div class="card sect" id="trend-card">
+          <h3>趋势月报 <span class="chip mono" id="trend-ym"></span></h3>
+          <div class="trendtop" id="trend-kpis"></div>
+          <div class="catbars" id="trend-cats"></div>
+          <p class="help" id="trend-empty" hidden>记录攒起来后，这里会给出本月与上月的对比。</p>
         </div>
         <div class="card sect" id="heat-card" hidden>
           <h3>专注热力图 · 12 周</h3>
@@ -1349,6 +1362,9 @@ const I18N = { en: {
   "继续": "Resume", "暂停": "Pause",
   "今天已记录 {t}": "Logged {t} today",
   "学习": "Focus", "休息": "Break",
+  "趋势月报": "Monthly trend", "本月时长": "This month", "打卡天数": "Days active",
+  "最长一天": "Best day", "上月": "last month", "新": "new",
+  "记录攒起来后，这里会给出本月与上月的对比。": "Log some sessions and this card will compare this month with last month.",
   "第 {n} 轮": "Round {n}",
   "本段还剩 {t}": "{t} left in this block",
   "番茄钟开始": "Pomodoro started", "专注 {n} 分钟，加油": "Focus for {n} min — go!",
@@ -1405,7 +1421,7 @@ const I18N = { en: {
   "像素小窝": "Pet den",
   "专注攒粮喂食的像素宠物养成，断粮会退化": "Raise a pixel buddy on focus-earned kibble — starve too long and it regresses",
   "专注热力图": "Focus heatmap",
-  "统计页显示过去 12 周的专注热力图": "Adds a 12-week focus heatmap to the Stats page",
+  "统计页显示过去 12 周的专注热力图，今天带高亮描边": "Adds a 12-week focus heatmap to the Stats page; today is outlined",
   "启用": "Enable", "停用": "Disable",
   "实验": "Beta",
   "依赖 · {n}": "Needs {n}",
@@ -3488,9 +3504,9 @@ const MODS = [
     on:()=>db.settings.mate === true,
     set:v=>{ db.settings.mate = v; },
     clearData:()=>{ db.mate = mateDefault(); } },
-  { id:"heat", ver:"0.1.0", exp:true, deps:[], icon:MOD_ICONS.heat,
+  { id:"heat", ver:"0.2.0", deps:[], icon:MOD_ICONS.heat,
     name:"专注热力图",
-    desc:"统计页显示过去 12 周的专注热力图",
+    desc:"统计页显示过去 12 周的专注热力图，今天带高亮描边",
     on:()=>db.settings.heatmap === true,
     set:v=>{ db.settings.heatmap = v; } },
   { id:"butler", ver:"0.1.0", exp:true, deps:[], icon:MOD_ICONS.butler, cfg:true,
@@ -4755,8 +4771,62 @@ function renderStats(){
       <span class="nm"><span class="dot" style="background:${colOf(x.i)}"></span>${esc(x.c||TF("科目{n}",{n:x.i+1}))}</span>
       <span class="track"><i style="width:${x.sec/mx*100}%;background:${colOf(x.i)}"></i></span>
       <span class="val mono">${fmtDur(x.sec)}</span></div>`).join("");
+  renderTrend();
   renderHeat();
   renderBadges();
+}
+/* 趋势月报: 本月 vs 上月, 日均口径(本月按已过天数折算, 对比才公平) */
+function renderTrend(){
+  const card = $("#trend-card");
+  if (!card) return;
+  const now = parseD(todayStr());
+  const thisYM = todayStr().slice(0,7);
+  const pmEnd = new Date(now.getFullYear(), now.getMonth(), 0);   /* 上月最后一天 */
+  const lastYM = pmEnd.getFullYear() + "-" + String(pmEnd.getMonth()+1).padStart(2,"0");
+  const daysT = now.getDate(), daysL = pmEnd.getDate();
+  const pick = ym => db.sessions.filter(s => (s.date||"").slice(0,7) === ym);
+  const sT = pick(thisYM), sL = pick(lastYM);
+  const totT = sT.reduce((a,s)=>a+(s.sec||0),0), totL = sL.reduce((a,s)=>a+(s.sec||0),0);
+  if (!totT && !totL){
+    $("#trend-ym").textContent = ""; $("#trend-kpis").innerHTML = ""; $("#trend-cats").innerHTML = "";
+    $("#trend-empty").hidden = false;
+    return;
+  }
+  $("#trend-empty").hidden = true;
+  $("#trend-ym").textContent = now.getFullYear() + "/" + (now.getMonth()+1);
+  const dayTot = {}; for (const s of sT) dayTot[s.date] = (dayTot[s.date]||0) + (s.sec||0);
+  const best = Object.entries(dayTot).sort((a,b)=>b[1]-a[1])[0] || ["", 0];
+  const onT = new Set(sT.map(s=>s.date)).size, onL = new Set(sL.map(s=>s.date)).size;
+  const dir = (a,b) => Math.abs(a-b) < 1e-9 ? 0 : a > b ? 1 : -1;
+  const arrow = (d,p) => d === 0 ? `<span class="teq">—</span>`
+    : `<span class="${d>0?"tup":"tdn"}">${d>0?"↑":"↓"}${p!=null?p+"%":""}</span>`;
+  const dayT = totT/3600/daysT, dayL = totL/3600/daysL;
+  const dMain = dir(dayT, dayL);
+  const pct = dayL > 0 ? Math.round(Math.abs(dayT-dayL)/dayL*100) : null;
+  $("#trend-kpis").innerHTML = [
+    `<div class="trendkpi"><div class="lb">${T("本月时长")}</div>
+      <div class="v mono">${fmtDurH(totT)}<small>h</small></div>
+      <div class="sub">${T("日均")} ${dayT.toFixed(1)}h · ${T("上月")} ${arrow(dMain, pct)}</div></div>`,
+    `<div class="trendkpi"><div class="lb">${T("打卡天数")}</div>
+      <div class="v mono">${onT}<small>/${daysT}${T("天")}</small></div>
+      <div class="sub">${T("上月")} ${onL}/${daysL}${T("天")}</div></div>`,
+    `<div class="trendkpi"><div class="lb">${T("最长一天")}</div>
+      <div class="v mono">${best[1] ? fmtDurH(+best[1]) : "—"}${best[1] ? "<small>h</small>" : ""}</div>
+      <div class="sub">${best[0] ? best[0].slice(5).replace("-","/") : "—"}</div></div>`,
+  ].join("");
+  /* 科目走向: 上月→本月时长, 方向按折算日均判定, 按变化幅度排序 */
+  const secOf = list => { const o = {}; for (const s of list) o[s.cat] = (o[s.cat]||0) + (s.sec||0); return o; };
+  const ct = secOf(sT), cl = secOf(sL);
+  const rows = [...new Set([...Object.keys(ct), ...Object.keys(cl)])].map(Number)
+    .map(i => ({ i, t:ct[i]||0, l:cl[i]||0, d:dir((ct[i]||0)/daysT, (cl[i]||0)/daysL) }))
+    .sort((a,b) => Math.abs(b.t/daysT - b.l/daysL) - Math.abs(a.t/daysT - a.l/daysL))
+    .slice(0, 6);
+  $("#trend-cats").innerHTML = rows.map(r => `<div class="catrow" data-cat="${r.i}">
+      <span class="nm"><span class="dot" style="background:${colOf(r.i)}"></span>${esc(cats()[r.i] || TF("科目{n}",{n:r.i+1}))}</span>
+      <span class="track" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:12px;color:var(--ink2);">
+        ${r.l ? fmtDurH(r.l) : "0"}h → ${r.t ? fmtDurH(r.t) : "0"}h ${arrow(r.d, null)}${r.l === 0 && r.t > 0 ? ` <span class="chip">${T("新")}</span>` : ""}
+      </span>
+    </div>`).join("");
 }
 /* 专注热力图(实验插件): 过去 12 周, 周一开头逐列排, 色阶=当日专注秒数 */
 function renderHeat(){
