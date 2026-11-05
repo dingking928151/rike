@@ -599,6 +599,11 @@ body.mate-on .bta{background:color-mix(in srgb,var(--mate-c,#B0766C) 20%,var(--c
 .btload{align-self:flex-start;color:var(--muted)}
 .btsug{align-self:flex-start;display:flex;flex-direction:column;gap:5px;max-width:92%}
 .btrow{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--hair)}
+#bt-aff{display:flex;align-items:center;gap:8px;padding:6px 12px 4px;font-size:12px;color:var(--muted)}
+#bt-aff .affheart{color:#e0526e;flex:none}
+#bt-aff .affbar{flex:1;height:5px;border-radius:3px;background:color-mix(in srgb,var(--ink) 10%,transparent);overflow:hidden}
+#bt-aff .affbar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,color-mix(in srgb,var(--mate-c,#B0766C) 55%,#e0526e),#e0526e)}
+#bt-aff b{flex:none;color:var(--ink)}
 .btrow textarea{flex:1;resize:none;font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hair);border-radius:10px;background:var(--card);color:var(--ink)}
 #bt-send{white-space:nowrap}
 #bt-note{padding:0 12px 8px;margin:0;font-size:11px}
@@ -1083,6 +1088,7 @@ body.nowbar-on #butler-fab{bottom:142px}
 <button id="butler-fab" hidden aria-label="AI 管家"><svg class="i" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2.5l1.2 3.1 3.1 1.2-3.1 1.2L10 11.1 8.8 8 5.7 6.8l3.1-1.2L10 2.5z"/><path d="M15.5 11l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" opacity=".7"/></svg></button>
 <div id="butler-panel" hidden>
   <div class="bthead"><img id="bt-mateimg" hidden alt=""><canvas id="bt-petcv" width="96" height="96" hidden></canvas><b id="bt-title">AI 管家</b><span class="chip mono" id="bt-model"></span><button class="btn sm" id="bt-stroke" hidden>摸摸它</button><button id="bt-close" aria-label="关闭">×</button></div>
+  <div id="bt-aff" hidden></div>
   <div id="bt-log"></div>
   <div class="btrow"><textarea id="bt-in" rows="1" placeholder="问问管家：这周学得怎么样？"></textarea><button class="btn sm pri" id="bt-send">发送</button></div>
   <p class="help" id="bt-note">提问与日程摘要只发送给你配置的服务商</p>
@@ -1445,6 +1451,11 @@ const I18N = { en: {
   "AI 管家": "AI Butler",
   "接入大模型 API，看得见日程与统计；建议给成速记，点「采用」才写入；宠物开着时，点宠物就能和它聊": "Connect an LLM API that sees your schedule and stats; suggestions arrive as quick-add lines you tap to adopt; with the pet on, tap your pet to chat with it",
   "摸摸它": "Pet it",
+  "初识": "Acquainted",
+  "熟络": "Familiar",
+  "亲近": "Close",
+  "挚友": "Best friends",
+  "相伴 {n} 天": "{n} days together",
   "和它聊聊：今天想学什么？": "Chat with your buddy: what's the plan?",
   "和 {n} 聊聊：今天想学什么？": "Chat with {n}: what's the plan?",
   "人物伙伴": "Companion",
@@ -2440,7 +2451,7 @@ const CHAR_PRESETS = [
   { rel:"青梅竹马", bio:"从小一起长大的邻居，嘴上爱损你、心里最挺你，学习上谁也不惯着谁。", tone:"嘴硬心软、爱抬杠、其实很靠谱",
     en:{ rel:"childhood best friend", bio:"Grew up next door; teases you constantly but always has your back, and never lets you slack on study.", tone:"sharp-tongued, soft-hearted, secretly reliable" } },
 ];
-function mateDefault(){ return { active:0, cus:{}, arts:{}, pos:null, logs:[[],[],[]], say:{d:"",meals:"",mile:false} }; }
+function mateDefault(){ return { active:0, cus:{}, arts:{}, pos:null, logs:[[],[],[]], st:{}, affs:{}, say:{d:"",meals:"",mile:false,days:0,daysDue:0} }; }
 function fixMate(m){
   const d = mateDefault();
   m = m && typeof m === "object" ? m : {};
@@ -2474,8 +2485,22 @@ function fixMate(m){
     const okPng = a && typeof a.png === "string" && /^data:image\/(png|jpeg);base64,/.test(a.png) && a.png.length < 200000;
     if (!okRows && !okPng) delete m.arts[k];
   }
-  if (!m.say || typeof m.say !== "object" || Array.isArray(m.say)) m.say = {d:"",meals:"",mile:false};
-  else m.say = { d:String(m.say.d||""), meals:String(m.say.meals||"").replace(/[^bld]/g,""), mile: m.say.mile === true };
+  if (!m.say || typeof m.say !== "object" || Array.isArray(m.say)) m.say = {d:"",meals:"",mile:false,days:0,daysDue:0};
+  else m.say = { d:String(m.say.d||""), meals:String(m.say.meals||"").replace(/[^bld]/g,""), mile: m.say.mile === true,
+    days: Math.min(365, Math.max(0, Math.floor(+m.say.days)||0)), daysDue: Math.min(365, Math.max(0, Math.floor(+m.say.daysDue)||0)) };
+  if (!m.st || typeof m.st !== "object" || Array.isArray(m.st)) m.st = {};    /* 陪伴天数: 逐槽消毒, 只认合法槽位 */
+  for (const k in m.st){
+    const n = +k, v = m.st[k];
+    if (!(n >= 0 && n <= 7) || !v || typeof v !== "object") { delete m.st[k]; continue; }
+    m.st[k] = { met: (typeof v.met === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.met)) ? v.met : "",
+      streak: Math.min(9999, Math.max(0, Math.floor(+v.streak)||0)),
+      total: Math.min(9999, Math.max(0, Math.floor(+v.total)||0)),
+      got: Math.min(365, Math.max(0, Math.floor(+v.got)||0)) };
+  }
+  if (!m.affs || typeof m.affs !== "object" || Array.isArray(m.affs)) m.affs = {};   /* 好感度 0-100 */
+  for (const k in m.affs){ const n = +k;
+    if (n >= 0 && n <= 7 && +m.affs[k] > 0) m.affs[k] = Math.min(100, Math.floor(+m.affs[k]));
+    else delete m.affs[k]; }
   return m;
 }
 const blinkOf = art => art.map(r=>r.replace(/E/g,"B"));
@@ -3016,9 +3041,12 @@ function mateTod(){
 function mateSys(){
   const c = mateInfo(db.mate.active);
   const tod = mateTod();
+  const dTot = (db.mate.st[db.mate.active] || {}).total || 0;
+  const dEn = dTot ? ` You two have spent ${dTot} days together.` : "";
+  const dZh = dTot ? `你们已经相伴${dTot}天。` : "";
   return LANG === "en"
-    ? `You are ${c.name}, the user's ${c.rel} and study companion inside 'Rike', a study planner. Background: ${c.bio} Personality: ${c.tone} It is ${tod} now. Speak first person, warm and brief (within 3 sentences); care about the user's study, meals and rest, like someone living alongside them. When the user wants help planning tasks, end your reply with a \`\`\`rike fenced block, one quick-add line per task (e.g. 19:00-20:30 Math review #math !high), at most 5 lines. Reply in English.`
-    : `你是「日课」里的人物伙伴「${c.name}」（${c.rel}），陪着主人一起学习生活。背景：${c.bio}性格：${c.tone}现在是${tod}。用第一人称回答：像身边人一样温暖简短（三句以内），关心主人的学习、吃饭和休息。主人需要帮忙安排日程时，在回答最后用 \`\`\`rike 代码块给出建议，每行一条速记（例：19:00-20:30 数学分析 #数学 !高），最多 5 条。用中文回答。`;
+    ? `You are ${c.name}, the user's ${c.rel} and study companion inside 'Rike', a study planner.${dEn} Background: ${c.bio} Personality: ${c.tone} It is ${tod} now. Speak first person, warm and brief (within 3 sentences); care about the user's study, meals and rest, like someone living alongside them. When the user wants help planning tasks, end your reply with a \`\`\`rike fenced block, one quick-add line per task (e.g. 19:00-20:30 Math review #math !high), at most 5 lines. Reply in English.`
+    : `你是「日课」里的人物伙伴「${c.name}」（${c.rel}），陪着主人一起学习生活。${dZh}背景：${c.bio}性格：${c.tone}现在是${tod}。用第一人称回答：像身边人一样温暖简短（三句以内），关心主人的学习、吃饭和休息。主人需要帮忙安排日程时，在回答最后用 \`\`\`rike 代码块给出建议，每行一条速记（例：19:00-20:30 数学分析 #数学 !高），最多 5 条。用中文回答。`;
 }
 let mateSuppressClick = false;
 function buildMate(){
@@ -3084,7 +3112,17 @@ function applyMateUI(){
   if (mateOn()){
     buildMate(); mateRender();                    /* 已在场也要重绘: PNG↔像素切换即时生效 */
     const gk = mateTodIdx() + ":" + db.mate.active;
-    if (gk !== mateGreetKey){ mateGreetKey = gk; setTimeout(mateGreet, 900); }   /* 上场/换人/跨时段: 打一次招呼 */
+    if (gk !== mateGreetKey){                        /* 上场/换人/跨时段: 打一次招呼; 考试日换成应援 */
+      mateGreetKey = gk;
+      const m0 = milesLeft()[0];
+      if (m0 && m0.left === 0){
+        const first = db.mate.say.d !== todayStr() || db.mate.say.mile !== true;   /* 好感奖励只发第一次 */
+        db.mate.say.d = todayStr(); db.mate.say.mile = true; save();               /* 当天里程碑台词算说过, tick 不再补 mile0 */
+        setTimeout(()=>{ if (mateOn() && $("#mate")){ mateSay(mateLine("exam").replace(/\{t\}/g, m0.txt));
+          if (first){ affGain(db.mate.active, 3); save(); } } }, 900);
+      }
+      else setTimeout(mateGreet, 900);
+    }
   }
   else { const d = $("#mate"); if (d) d.remove(); }
   document.body.classList.toggle("mate-on", mateOn());
@@ -3134,7 +3172,23 @@ const MATE_LINES = [
       "今天就是「{t}」了——平常心，像平时一样走进去就好。" ],
       en:[
       "Today is {t}. Deep breath — every day you prepared is holding you up.",
-      "Today is {t} — keep an even keel and walk in like any ordinary day." ] } },
+      "Today is {t} — keep an even keel and walk in like any ordinary day." ] },
+    exam:{ zh:[
+      "「{t}」要开始了——深呼吸，把平时练的手感带进去就够了，我在这里等你好消息。",
+      "「{t}」进行中……别想结果，一题一题来，就像平时我陪你过的那样。",
+      "「{t}」出场时间到！你准备过的每一天都不会辜负你，稳稳走完就好。" ],
+      en:[
+      "{t} is about to begin — deep breath. Bring in the feel you practiced; I'll be right here waiting for good news.",
+      "{t} in progress... don't think about the outcome, one question at a time, just like the ones we worked through together.",
+      "{t} — it's your time! Every day you prepared won't let you down. Walk through it, nice and steady." ] },
+    days:{ zh:[
+      "不知不觉，我们相伴 {n} 天了——往后的日子，也请多多指教呀。",
+      "{n} 天啦。你的每一次专注，我都悄悄记在心里了。",
+      "陪伴满 {n} 天达成！这段一起努力的时间，我想一直续下去。" ],
+      en:[
+      "Before I knew it, {n} days together — please keep looking after me in the days ahead too.",
+      "{n} days already. I've quietly kept every one of your focus sessions in my heart.",
+      "{n} days of companionship, unlocked! I'd love to keep renewing this time we spend growing together." ] } },
   { greet:{ zh:[
       ["哟，还没睡？行——最后一波，做完这题就撤！","深夜党是吧？我陪你冲完这段，明天记得补觉！","这个点还在？行，最后冲一波，我陪你计数！","深夜加练是吧？讲究！但明天必须精神满满啊！"],
       ["早起的人运气不会差！走，趁状态最好的时候开干！","早啊！先活动两下醒醒神，今天必定高效！","早起签到！今天第一棒交给你，冲！","早！操场还没人呢——不对，是书桌还没热，快坐！"],
@@ -3174,7 +3228,23 @@ const MATE_LINES = [
       "今天就是「{t}」！热身完毕，上场放开打，我们等你凯旋！" ],
       en:[
       "Today is {t}! This is the stage you trained for — go all out!",
-      "Today is {t}! Warm-up done — play free out there. We await your triumph!" ] } },
+      "Today is {t}! Warm-up done — play free out there. We await your triumph!" ] },
+    exam:{ zh:[
+      "「{t}」开赛！热身完毕，放手去打——这场我给你记首胜！",
+      "「{t}」就是你的主场！平时训练量摆在这，冲就完事了！",
+      "「{t}」进行中！场外交给队友我，场内你只管火力全开！" ],
+      en:[
+      "{t} — game on! Warm-up done, play free — I'm putting this one down as your first win!",
+      "{t} is your home turf! The training volume speaks for itself — just go all in!",
+      "{t} in progress! Leave the sidelines to me, your teammate — inside, you fire at will!" ] },
+    days:{ zh:[
+      "组队满 {n} 天！这默契不是白练的，下一场继续一起赢！",
+      "{n} 天了！你的训练日志我都看着呢——这波成长实打实！",
+      "搭档认证：满 {n} 天！这个队伍编制，永久有效！" ],
+      en:[
+      "{n} days as a team! This chemistry wasn't built for nothing — next match, we win together again!",
+      "{n} days! I've been reading your training log — this growth is the real deal!",
+      "Partner certified: {n} days! This squad roster is valid for life!" ] } },
   { greet:{ zh:[
       ["喂，都几点了还不睡？我可要生气啦。","又熬夜？说好的早睡呢……算了算了，就这一段，我陪着你。","喂，都几点了？……行吧行吧，我陪你，但明天别想赖床。","深夜偷学被我抓到了吧？哼，就陪你一会儿。"],
       ["哇，你起这么早？太阳打西边出来了……早安呀！","早！我把最好的清醒时段给你留着呢，快用起来。","起这么早？行啊你——今天我勉为其难陪你卷。","早！别得意，我只是恰好也醒得早而已。"],
@@ -3214,7 +3284,23 @@ const MATE_LINES = [
       "今天就是「{t}」！去吧去吧——考完我请你吃好吃的。" ],
       en:[
       "Today is {t}! Don't be scared — I've seen every bit of your hard work.",
-      "Today is {t}! Go, go — when you're done, treats are on me." ] } },
+      "Today is {t}! Go, go — when you're done, treats are on me." ] },
+    exam:{ zh:[
+      "今天「{t}」……哼，才不是担心你，就是顺便祝你旗开得胜而已！",
+      "「{t}」去吧去吧！考砸了也没关系……才怪，你给我好好考！",
+      "「{t}」进行中——我就在这儿等你，快点出来跟我汇报！" ],
+      en:[
+      "It's {t} today... hmph, it's not like I'm worried — just congratulating you in advance, that's all!",
+      "{t} — go, go! It's fine if it goes badly... as if! You'd better do it properly!",
+      "{t} in progress — I'll be right here waiting. Come out and report to me at once!" ] },
+    days:{ zh:[
+      "咦，都 {n} 天了？……也没多啦，就是偶尔、偶尔觉得有你在也不坏。",
+      "相伴 {n} 天达成！哼，档案我都记着呢，你可跑不掉了。",
+      "{n} 天了呀……喂，接下来的日子也不许丢下我一个人学习！" ],
+      en:[
+      "Huh, {n} days already? ...It's not much, really — just, occasionally, I think having you around isn't so bad.",
+      "{n} days together, unlocked! Hmph, I've got the records — you can't escape now.",
+      "{n} days, huh... hey! You're not allowed to leave me studying alone from here on either!" ] } },
 ];
 function mateLine(kind, slot){                     /* 取一句生活台词: greet 带 0-6 槽, meal 带 0-2 槽, mile 不带 */
   const set = MATE_LINES[mateTmpl(db.mate.active)][kind];
@@ -3224,6 +3310,21 @@ function mateLine(kind, slot){                     /* 取一句生活台词: gre
   if (s === mateLastLine && pool.length > 1) s = pool[Math.floor(Math.random()*pool.length)];   /* 连着抽到同句重摇一次 */
   mateLastLine = s;
   return s;
+}
+/* ---------- 陪伴感: 陪伴天数 + 好感度 (轻量, 全本地) ---------- */
+function affGain(i, n){ db.mate.affs[i] = Math.min(100, Math.floor(+db.mate.affs[i] || 0) + n); }   /* 好感封顶 100 */
+function affLv(n){ return n >= 80 ? 3 : n >= 50 ? 2 : n >= 20 ? 1 : 0; }
+function mateDayRoll(){                              /* 当日陪伴结算: 每 tick 幂等; 返回跨过的天数阈值(未跨=0) */
+  const i = db.mate.active, t = todayStr();
+  const st = db.mate.st[i] || (db.mate.st[i] = {met:"",streak:0,total:0,got:0});
+  if (st.met === t) return 0;
+  st.streak = (st.met && st.met === addDays(t,-1)) ? st.streak + 1 : 1;
+  st.total++; st.met = t;
+  affGain(i, 1);                                     /* 每天首次见面 +1 */
+  let due = 0;
+  for (const n of [7,30,100,365]) if (st.total === n && st.got < n){ st.got = n; due = n; }
+  save();
+  return due;
 }
 let mateSayTimer = 0, mateSaidAt = 0, mateGreetKey = "", mateLifeAt = 0, mateLastLine = "";
 function mateSay(text){
@@ -3248,7 +3349,8 @@ function mateLifeTick(now){                        /* now 可注入(测试), 默
   if (t - mateLifeAt < 20000) return;
   mateLifeAt = t;
   const s = db.mate.say;
-  if (s.d !== todayStr()){ s.d = todayStr(); s.meals = ""; s.mile = false; }
+  if (s.d !== todayStr()){ s.d = todayStr(); s.meals = ""; s.mile = false; s.days = 0; s.daysDue = 0; }
+  const due = mateDayRoll(); if (due) s.daysDue = due;   /* 结算在 45s 检查前常跑, 台词等能说话时再补 */
   if (t - mateSaidAt < 45000) return;               /* 刚说过话(含问候)先不打扰 */
   now = now || new Date();
   const h = now.getHours();
@@ -3256,6 +3358,12 @@ function mateLifeTick(now){                        /* now 可注入(测试), 默
   if (meal >= 0 && !s.meals.includes("bld"[meal])){
     s.meals += "bld"[meal]; save();
     mateSay(mateLine("meal", meal));
+    return;
+  }
+  if (s.daysDue && !s.days){                       /* 陪伴满 N 天: 当天一次, 事件 +3 好感 */
+    s.days = s.daysDue; save();
+    mateSay(mateLine("days").replace(/\{n\}/g, s.days));
+    affGain(db.mate.active, 3); save();
     return;
   }
   if (!s.mile){
@@ -3720,7 +3828,8 @@ function butlerSnap(){
     L.push(`本周专注: 累计${fmtDurH(total)}h，日均${total?fmtDurH(total/7):0}h${perCat.length?"，主要科目: "+perCat.map(x=>`${x.c} ${fmtDurH(x.sec)}h`).join("、"):""}`);
     L.push(`连续打卡: ${streak()} 天`);
     if (miles.length) L.push(`近期里程碑: ${miles.join("；")}`);
-    if (mateOn()){ const c = mateInfo(db.mate.active); L.push(`伙伴: ${c.name}（${c.rel}）`); }
+    if (mateOn()){ const c = mateInfo(db.mate.active); const mst = db.mate.st[db.mate.active] || {};
+      L.push(`伙伴: ${c.name}（${c.rel}，相伴${mst.total||0}天，好感${Math.floor(+db.mate.affs[db.mate.active]||0)}）`); }
     if (petOn()) L.push(`宠物: ${db.pet.name}（${PET_ART[db.pet.species % PET_ART.length].name}${["蛋","幼年","成年"][petStage()]}，心情${db.pet.mood} 饱食${db.pet.hunger}）`);
     return "【数据摘要】\n" + L.join("\n");
   }catch(e){ return ""; }
@@ -3743,7 +3852,7 @@ async function butlerAsk(q){
     if (blk) for (const line of blk[1].split("\n")){ const s2 = line.trim(); if (s2) sug.push({ line:s2, used:false }); }
     log.push({ a:text, sug });
     while (log.length > 40) log.shift();
-    if (mateOn()) save();                              /* 人物聊天记忆落库 */
+    if (mateOn()){ affGain(db.mate.active, 1); save(); }   /* 人物聊天记忆落库, 聊成功一轮 +1 好感 */
     else if (buddyOn()){ db.pet.mood = Math.min(100, (db.pet.mood||0) + 1); save(); }   /* 聊一轮它也开心 */
   }catch(e){
     log.push({ a:"", err:String(e.message||e) });
@@ -3786,6 +3895,16 @@ function renderButler(){
     if (mate && !mpng) drawPet(cv, {blink:false, f2:false, dy:0, mat:false},
       {art: ma && ma.rows ? ma.rows : mc.art.art, art2: ma && ma.rows ? null : mc.art.art2, f2dy:0, pal:mc.art.pal});
     else if (skin) drawPet(cv, {blink:false, f2:false, dy:0, mat:false});
+    const af = $("#bt-aff");
+    if (af){                                          /* 人物皮肤: 好感度行 (♥ 等级 进度 相伴天数) */
+      af.hidden = !mate;
+      if (mate){
+        const n = Math.min(100, Math.floor(+db.mate.affs[db.mate.active] || 0));
+        const lv = affLv(n), nm = T(["初识","熟络","亲近","挚友"][lv]);
+        const tot = (db.mate.st[db.mate.active] || {}).total || 0;
+        af.innerHTML = `<span class="affheart">♥</span><div class="affbar"><i style="width:${n}%"></i></div><b>${nm}</b><span class="mono">${n}/100</span><span>${TF("相伴 {n} 天", {n:tot})}</span>`;
+      }
+    }
   }
   let html = "";
   curLog().forEach((m, i)=>{
