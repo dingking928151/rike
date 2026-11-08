@@ -410,9 +410,6 @@ input:hover,select:hover,textarea:hover{border-color:var(--accent-line);}
 .readout.running{color:var(--accent);}
 .timerctl{display:flex;gap:10px;margin:18px 0 6px;flex-wrap:wrap;}
 .pomoinfo{display:flex;gap:9px;align-items:center;margin-top:12px;flex-wrap:wrap;}
-.noisebar{display:flex;gap:9px;align-items:center;margin-top:10px;flex-wrap:wrap;}
-.noisechips{display:inline-flex;gap:6px;}
-.noisechips .on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 .phase{padding:3px 12px;border-radius:99px;font-size:13px;font-weight:500;}
 .phase.work{background:var(--accent-soft);color:var(--accent);}
 .phase.rest{background:var(--amber-soft);color:var(--amber);}
@@ -754,12 +751,6 @@ body.nowbar-on #butler-fab{bottom:142px}
               <button class="btn sm" data-pw="40" title="CSP 真题限时">40 分 · CSP</button>
               <button class="btn sm" data-pw="50">50 分</button>
             </span>
-          </div>
-          <div class="noisebar" id="noise-row">
-            <span style="font-size:12.5px;color:var(--muted);flex:none;">白噪音</span>
-            <span class="noisechips" id="noise-chips"></span>
-            <span style="margin-left:auto;font-size:12px;color:var(--muted);flex:none;">音量</span>
-            <input type="range" id="noise-vol" min="0" max="100" step="5" style="width:88px;" aria-label="白噪音音量">
           </div>
           <div class="timerctl">
             <button class="btn pri" id="t-start"><svg class="i" viewBox="0 0 20 20"><path d="M7 5v10l8-5z" fill="currentColor" stroke="none"/></svg>开始</button>
@@ -1473,8 +1464,6 @@ const I18N = { en: {
   "亲近": "Close",
   "挚友": "Best friends",
   "相伴 {n} 天": "{n} days together",
-  "白噪音": "White noise", "音量": "Volume", "白噪音音量": "White noise volume",
-  "关": "Off", "白": "White", "粉": "Pink", "棕": "Brown",
   "番茄钟 · 本周": "Pomodoro · this week",
   "开启番茄钟后，这里会统计每轮的完成率：整轮专注记完成，中途放弃只记开始。": "Start a pomodoro and this tracks completion: a full focus round counts as done, an abandoned one only as started.",
   "本周 {d}/{s} 轮完成 · 累计 {td}/{ts} 轮（{p}%）": "This week {d}/{s} rounds done · all-time {td}/{ts} ({p}%)",
@@ -1666,7 +1655,7 @@ function seed(){
       S(2,"GCN 预热 · 图表示基础",...hr(dstr(y1),15,30,50),dstr(y1)),
       S(3,"英语精读",...hr(t,8,10,25),t),
     ],
-    settings: {lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,mate:false,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,noise:"",noiseVol:60,rev:true,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""},
+    settings: {lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,mate:false,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,rev:true,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""},
     pet: petDefault(),
     mate: mateDefault(),
     timer: null,
@@ -1680,7 +1669,7 @@ function load(){
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.tasks)) return null;
-    d.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,mate:false,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,noise:"",noiseVol:60,rev:true,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
+    d.settings = Object.assign({lang:"zh",ahead:10,sound:true,notify:false,haptic:true,petOn:true,petDesk:false,dev:false,heatmap:false,butler:false,butlerCfg:null,mate:false,petAnim:true,petStarve:3,style:"jz",pw:25,pr:5,rev:true,cats:[...DEF_CATS],catCols:null,bg:"",acc:"",goal:4,wgoal:20,anchor:"",w0:1,w1:24,miles:""}, d.settings||{});
     d.sessions = d.sessions||[]; d.fired = d.fired||{}; d.timer = d.timer||null;
     d.pomo = fixPomo(d.pomo);
     d.pet = fixPet(d.pet);
@@ -4757,13 +4746,13 @@ $("#t-start").onclick = ()=>{
   db.timer = t; save();
   setTimerButtons(); renderReadout(); renderToday();
   if (mode==="pomo"){ pomoRound("s"); toast(T("番茄钟开始"),TF("专注 {n} 分钟，加油",{n:db.settings.pw})); }
-  petTalk("study"); noiseTick();
+  petTalk("study");
 };
 $("#t-pause").onclick = ()=>{
   const t = tState(); if (!t) return;
   if (t.pausedAt){ t.startTs = Date.now(); t.pausedAcc = t.pausedAt; t.pausedAt = 0; }
   else { t.pausedAcc = timerElapsed()*1000; t.pausedAt = 1; }
-  save(); setTimerButtons(); renderReadout(); noiseTick();
+  save(); setTimerButtons(); renderReadout();
 };
 function finishTimer(auto){
   const t = tState(); if (!t) return;
@@ -4779,68 +4768,8 @@ function finishTimer(auto){
   if (sec >= 60) toast(auto?T("番茄钟专注完成"):T("已记录"), `${t.subj||cats()[t.cat]} · ${fmtDur(sec)}`);
   if (sec >= 60) buzz([24,60,24]);
   if (sec >= 60) petTalk("win");
-  noiseTick();
 }
 $("#t-finish").onclick = ()=>finishTimer(0);
-/* ---------- 白噪音 (纯 Web Audio 合成, 零音频文件; 跟随计时状态) ---------- */
-const NOISE = { ctx:null, src:null, gain:null, bufs:{} };
-function noiseBuf(kind){
-  if (NOISE.bufs[kind]) return NOISE.bufs[kind];
-  const sr = NOISE.ctx.sampleRate, n = sr * 2;
-  const buf = NOISE.ctx.createBuffer(1, n, sr);
-  const ch = buf.getChannelData(0);
-  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,last=0;
-  for (let i=0;i<n;i++){
-    const w = Math.random()*2-1;
-    if (kind === "white") ch[i] = w * 0.5;
-    else if (kind === "pink"){
-      b0=0.99886*b0+w*0.0555179; b1=0.99332*b1+w*0.0750759; b2=0.96900*b2+w*0.1538520;
-      b3=0.86650*b3+w*0.3104856; b4=0.55000*b4+w*0.5329522; b5=-0.7616*b5-w*0.0168980;
-      ch[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11; b6=w*0.115926;
-    }
-    else { last = (last + 0.02*w) / 1.02; ch[i] = last * 3.5; }
-  }
-  return NOISE.bufs[kind] = buf;
-}
-function noiseStop(){ if (NOISE.src){ try{ NOISE.src.stop(); }catch(e){} NOISE.src = null; } }
-function noisePlay(){
-  const kind = db.settings.noise;
-  if (!kind){ noiseStop(); return; }
-  if (!NOISE.ctx){
-    try{ NOISE.ctx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ return; }
-    NOISE.gain = NOISE.ctx.createGain();
-    NOISE.gain.connect(NOISE.ctx.destination);
-  }
-  if (NOISE.ctx.state === "suspended") NOISE.ctx.resume().catch(()=>{});
-  noiseStop();
-  const src = NOISE.ctx.createBufferSource();
-  src.buffer = noiseBuf(kind); src.loop = true; src.__kind = kind;
-  NOISE.gain.gain.value = Math.pow((+db.settings.noiseVol||60)/100, 2) * 0.5;
-  src.connect(NOISE.gain);
-  try{ src.start(); }catch(e){ return; }
-  NOISE.src = src;
-}
-function noiseTick(){     /* 跟随计时: 跑着就播, 暂停/收工就停, 换色即换源 */
-  const t = tState();
-  const want = !!db.settings.noise && !!t && !t.pausedAt;
-  if (want && (!NOISE.src || NOISE.src.__kind !== db.settings.noise)) noisePlay();
-  else if (!want && NOISE.src) noiseStop();
-}
-function renderNoise(){
-  $("#noise-chips").innerHTML = [["",T("关")],["white",T("白")],["pink",T("粉")],["brown",T("棕")]]
-    .map(([v,nm])=>`<button class="btn sm ${db.settings.noise===v?"on":""}" data-noise="${v}">${nm}</button>`).join("");
-  $("#noise-vol").value = +db.settings.noiseVol || 60;
-}
-$("#noise-chips").addEventListener("click", e=>{
-  const b = e.target.closest("[data-noise]"); if (!b) return;
-  db.settings.noise = b.dataset.noise;
-  save(); renderNoise(); noiseTick();      /* 点击=用户手势, AudioContext 可解锁 */
-});
-$("#noise-vol").oninput = e=>{
-  db.settings.noiseVol = +e.target.value;
-  if (NOISE.gain) NOISE.gain.gain.value = Math.pow(db.settings.noiseVol/100, 2) * 0.5;
-  save();
-};
 /* 番茄钟引擎 (只管 pomo 模式; 自由计时不受段长约束) */
 setInterval(()=>{
   const t = tState();
@@ -4868,7 +4797,6 @@ setInterval(()=>{
       save();
     }
   }
-  noiseTick();
   renderReadout();
 }, 1000);
 $("#mf-add").onclick = ()=>{
@@ -5457,7 +5385,7 @@ function renderAll(){
   applyPetUI();
   applyMateUI();
   applyButler();
-  renderToday(); renderCal(); renderSessions(); renderStats(); renderSettings(); renderPet(); renderMods(); updateNext(); updatePlanInfo(); setTimerButtons(); renderReadout(); renderPomoChips(); renderNoise();
+  renderToday(); renderCal(); renderSessions(); renderStats(); renderSettings(); renderPet(); renderMods(); updateNext(); updatePlanInfo(); setTimerButtons(); renderReadout(); renderPomoChips();
 }
 fillTimerSelects();
 tickClock(); setInterval(tickClock, 1000);
