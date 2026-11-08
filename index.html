@@ -788,6 +788,7 @@ body.nowbar-on #butler-fab{bottom:142px}
       <div class="view-head">
         <h2 class="serif">统计</h2>
         <div class="sub" id="stats-sub"></div>
+        <button class="btn sm" id="share-week" style="margin-left:auto;">分享周报</button>
       </div>
       <div class="tiles" id="tiles"></div>
       <div class="progress-row" id="wgoal-row" style="margin:2px 0 14px;"></div>
@@ -1465,6 +1466,12 @@ const I18N = { en: {
   "挚友": "Best friends",
   "相伴 {n} 天": "{n} days together",
   "番茄钟 · 本周": "Pomodoro · this week",
+  "分享周报": "Share weekly report", "日课": "Rike", " · 周报": " · Weekly",
+  "本周专注": "Focused this week", "打卡 {n} 天 · {m} 次专注": "{n} active days · {m} sessions",
+  " · 番茄 {d}/{s} 轮": " · pomodoro {d}/{s}", "每日专注": "Daily focus", "科目分布": "By subject",
+  "和 {n} 一起 · 每天进步一点点": "With {n} · a little better every day",
+  "每天进步一点点": "A little better every day", "小伙伴": "buddy",
+  "周报已生成": "Weekly report ready", "图片已开始下载，快去分享吧": "PNG downloaded — go share it!",
   "开启番茄钟后，这里会统计每轮的完成率：整轮专注记完成，中途放弃只记开始。": "Start a pomodoro and this tracks completion: a full focus round counts as done, an abandoned one only as started.",
   "本周 {d}/{s} 轮完成 · 累计 {td}/{ts} 轮（{p}%）": "This week {d}/{s} rounds done · all-time {td}/{ts} ({p}%)",
   "艾宾浩斯复习": "Ebbinghaus review",
@@ -4870,6 +4877,127 @@ function renderPomoStats(){
     <div class="progress-row" style="margin:2px 0 6px;"><div class="meter"><i style="width:${pct}%"></i></div><span class="mono" style="font-size:12px;color:var(--ink2);flex:none;">${pct}%</span></div>
     <p class="help">${TF("本周 {d}/{s} 轮完成 · 累计 {td}/{ts} 轮（{p}%）", {d:w.d, s:w.s, td:p.d, ts:p.s, p:allPct})}</p>`;
 }
+/* ---------- 周报分享图: 纯 canvas 合成 → PNG 下载 (跟随当前主题配色) ---------- */
+function shareWeek(){
+  const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+  const BG = css("--bg")||"#F4F2EC", CARD = css("--card")||"#FDFCFA";
+  const INK = css("--ink")||"#24292C", INK2 = css("--ink2")||"#5B6367";
+  const MUT = css("--muted")||"#8A9195", ACC = css("--accent")||"#2F6D5F";
+  const W = 750, H = 1000, L = 68, R = W-68, C = W/2;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const g = cv.getContext("2d");
+  const font = (px, w) => `${w||400} ${px}px "PingFang SC","Microsoft YaHei",system-ui,sans-serif`;
+  const rr = (x,y,w,h,r) => { g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); };
+  g.fillStyle = BG; g.fillRect(0,0,W,H);
+  g.fillStyle = CARD; rr(24,24,W-48,H-48,20); g.fill();
+
+  /* 本周数据聚合 */
+  const wk = wkKey(todayStr());
+  const days = [...Array(7)].map((_,i)=>addDays(wk,i));
+  const secOf = {}, catOf = {};
+  let total = 0, cnt = 0;
+  for (const s of db.sessions){
+    if (!days.includes(s.date)) continue;
+    const sec = Math.max(0, +s.sec||0);
+    secOf[s.date] = (secOf[s.date]||0) + sec;
+    catOf[s.cat] = (catOf[s.cat]||0) + sec;
+    total += sec; cnt++;
+  }
+
+  /* 头部 */
+  g.textBaseline = "alphabetic"; g.textAlign = "left";
+  g.font = font(34,700); g.fillStyle = ACC;
+  g.fillText(T("日课"), L, 104);
+  const wT = g.measureText(T("日课")).width;
+  g.fillStyle = INK; g.fillText(T(" · 周报"), L + wT, 104);
+  g.textAlign = "right"; g.fillStyle = MUT; g.font = font(15);
+  g.fillText("rike", R, 104);
+  const d0 = parseD(wk), d6 = parseD(days[6]);
+  g.textAlign = "left"; g.fillStyle = INK2; g.font = font(17);
+  g.fillText(`${d0.getMonth()+1}.${d0.getDate()} – ${d6.getMonth()+1}.${d6.getDate()}`, L, 138);
+
+  /* 主数字 */
+  g.textAlign = "center";
+  g.fillStyle = ACC; g.font = font(72,700); g.fillText(fmtDur(total), C, 236);
+  g.fillStyle = MUT; g.font = font(16); g.fillText(T("本周专注"), C, 272);
+  const pw = db.pomo && db.pomo.weeks && db.pomo.weeks[wk];
+  let sub = TF("打卡 {n} 天 · {m} 次专注", {n: Object.keys(secOf).filter(k=>secOf[k]>0).length, m: cnt});
+  if (pw && pw.s) sub += TF(" · 番茄 {d}/{s} 轮", {d: pw.d, s: pw.s});
+  g.fillStyle = INK2; g.font = font(15); g.fillText(sub, C, 302);
+  g.save(); g.globalAlpha = .14; g.fillStyle = MUT; g.fillRect(L, 330, R-L, 1); g.restore();
+
+  /* 每日柱状 */
+  g.textAlign = "left"; g.fillStyle = INK; g.font = font(18,600);
+  g.fillText(T("每日专注"), L, 380);
+  const bw = 44, gap = ((R-L) - 7*bw) / 6, base = 536, top = 424;
+  const mx = Math.max(3600, ...days.map(d=>secOf[d]||0));
+  const today = todayStr();
+  days.forEach((d,i)=>{
+    const sec = secOf[d]||0, h = Math.max(sec?6:2, sec/mx*(base-top));
+    const x = L + i*(bw+gap);
+    g.save(); g.globalAlpha = d===today ? 1 : .42;
+    g.fillStyle = ACC; rr(x, base-h, bw, h, 4); g.fill();
+    g.restore();
+    g.textAlign = "center"; g.font = font(14);
+    g.fillStyle = d===today ? INK : MUT;
+    g.fillText(WD_SF()[parseD(d).getDay()], x+bw/2, base+26);
+    if (sec >= 1800){
+      g.save(); g.globalAlpha = .85; g.fillStyle = INK2; g.font = font(12);
+      g.fillText(String(Math.round(sec/360)/10) + "h", x+bw/2, base-h-8);
+      g.restore();
+    }
+  });
+
+  /* 科目分布 */
+  g.textAlign = "left"; g.fillStyle = INK; g.font = font(18,600);
+  g.fillText(T("科目分布"), L, 600);
+  const rows = Object.entries(catOf).map(([i,sec])=>({i:+i, sec})).sort((a,b)=>b.sec-a.sec);
+  if (!rows.length){
+    g.fillStyle = MUT; g.font = font(15);
+    g.fillText(T("本周还没有记录"), L, 634);
+  } else {
+    const top3 = rows.slice(0,3), rest = rows.slice(3);
+    const list = rest.length ? [...top3, {i:-1, sec: rest.reduce((a,b)=>a+b.sec,0)}] : top3;
+    list.forEach((r,k)=>{
+      const y = 634 + k*48, col = r.i<0 ? MUT : colOf(r.i);
+      g.fillStyle = col; g.beginPath(); g.arc(L+6, y-5, 6, 0, Math.PI*2); g.fill();
+      g.fillStyle = INK; g.font = font(15);
+      g.fillText(r.i<0 ? T("其他") : (cats()[r.i] || TF("科目{n}",{n:r.i+1})), L+22, y);
+      g.textAlign = "right"; g.fillStyle = INK2; g.font = font(15);
+      g.fillText(fmtDur(r.sec), R, y);
+      g.textAlign = "left";
+      g.save(); g.globalAlpha = .16; g.fillStyle = MUT;
+      rr(L+22, y+8, R-L-22, 5, 2.5); g.fill(); g.restore();
+      g.fillStyle = col;
+      rr(L+22, y+8, Math.max(10, (R-L-22)*r.sec/total), 5, 2.5); g.fill();
+    });
+  }
+
+  /* 底部: 宠物 + 结语 */
+  if (petOn() && db.pet){
+    const pc = document.createElement("canvas"); pc.width = 96; pc.height = 96;
+    drawPet(pc, {});
+    g.imageSmoothingEnabled = false;
+    g.drawImage(pc, C-48, 800, 96, 96);
+    g.imageSmoothingEnabled = true;
+    g.textAlign = "center"; g.fillStyle = INK2; g.font = font(15);
+    g.fillText(TF("和 {n} 一起 · 每天进步一点点", {n: db.pet.name || T("小伙伴")}), C, 924);
+  } else {
+    g.textAlign = "center"; g.fillStyle = INK2; g.font = font(15);
+    g.fillText(T("每天进步一点点"), C, 880);
+  }
+  g.textAlign = "center"; g.fillStyle = MUT; g.font = font(12);
+  g.fillText("rike · " + todayStr(), C, 952);
+
+  const url = cv.toDataURL("image/png");
+  window.__share = { url, total, cnt, w: W, h: H };
+  const a = document.createElement("a");
+  a.href = url; a.download = "rike-week-" + wk + ".png";
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(T("周报已生成"), T("图片已开始下载，快去分享吧"));
+}
+$("#share-week").onclick = shareWeek;
 const BADGES = [
   {id:"first", icon:"📝", name:"第一笔记录", desc:"记录过一次专注", cond:()=>db.sessions.length>=1},
   {id:"h10", icon:"⏳", name:"累计 10 小时", desc:"历史总专注满 10 小时", cond:()=>petTotalSec()>=10*3600},
